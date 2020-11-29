@@ -1,13 +1,67 @@
 from typing import Optional
 import torch.nn as nn
+import torch.nn.functional as F
 
-from layers.wrappers import conv1x1, conv3x3
+from layers.wrappers import conv1x1, conv3x3, half_max_pool2d
 
 
 def shortcut(in_channels: int, out_channels: int):
     return nn.Sequential(
         nn.AvgPool2d(stride=2, kernel_size=2), conv1x1(in_channels, out_channels)
     )
+
+
+class StandardStem(nn.Module):
+    """
+    Standard 7x7 Resnet stem followed by pooling.
+    """
+
+    def __init__(self, in_channels=3, out_channels=64):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.conv1 = nn.Conv2d(
+            in_channels, out_channels, kernel_size=7, stride=2, padding=3, bias=False
+        )
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.pool = half_max_pool2d()
+
+    def forward(self, x):
+        return self.pool(F.relu(self.bn(self.conv1(x))))
+
+
+class FastStem(nn.Module):
+    """
+    Resnet low-level features optimized by using 3x3 convs.
+
+    This stem is derived from  "Bag of Tricks for Image
+    Classification with Convolutional Neural Networks" paper.
+    """
+
+    def __init__(self, in_channels=3, out_channels=64):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.conv1_1 = nn.Conv2d(
+            in_channels, out_channels // 2, kernel_size=3, stride=2
+        )
+        self.conv1_2 = conv3x3(out_channels // 2, out_channels // 2)
+        self.conv1_3 = conv3x3(out_channels // 2, out_channels)
+        self.bn1_1 = nn.BatchNorm2d(out_channels // 2)
+        self.bn1_2 = nn.BatchNorm2d(out_channels // 2)
+        self.bn1_3 = nn.BatchNorm2d(out_channels)
+        self.pool1 = half_max_pool2d()
+
+        # TODO: init using kaiming...
+
+    def forward(self, x):
+        out = F.relu(self.bn1_1(self.conv1_1(x)))
+        out = F.relu(self.bn1_2(self.conv1_2(out)))
+        out = F.relu(self.bn1_3(self.conv1_3(out)))
+
+        return self.pool1(out)
 
 
 class BottleNeckBlock(nn.Module):
