@@ -88,6 +88,9 @@ class RetinaNetHead(nn.Module):
         )
 
     def forward(self, P3, P4, P5, P6, P7):
+        # Notice that each cell in the feature maps will output `num_anchors` * 4
+        # dim channels as bbox preds & `num_anchors` * `num_classes` dim channels
+        # as class preds.
 
         logits = {
             "p3": self.classifier_subnet(P3),
