@@ -17,18 +17,18 @@ class RetinaNetFPN50(nn.Module):
         self.conv7_up = conv3x3(out_features, out_features, stride=2)
 
         # Stage 6:
-        self.conv6_up = conv3x3(2048, out_features, stride=2)
+        self.conv6_up = conv3x3(512, out_features, stride=2)
 
         # Stage 5:
-        self.lateral5 = conv1x1(2048, out_features)
+        self.lateral5 = conv1x1(512, out_features)
         self.conv5 = conv3x3(out_features, out_features)
 
         # Stage 4:
-        self.lat_merge4 = LateralUpsampleMerge(1024, out_features)
+        self.lat_merge4 = LateralUpsampleMerge(256, out_features)
         self.conv4 = conv3x3(out_features, out_features)
 
         # Stage 3:
-        self.lat_merge3 = LateralUpsampleMerge(512, out_features)
+        self.lat_merge3 = LateralUpsampleMerge(128, out_features)
         self.conv3 = conv3x3(out_features, out_features)
 
     def forward(self, C3, C4, C5):
