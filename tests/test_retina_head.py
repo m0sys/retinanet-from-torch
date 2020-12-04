@@ -3,6 +3,7 @@ import torch
 
 from model.backbone.resnet import ResNet50
 from model.backbone.retina_meta import RetinaNetFPN50, RetinaNetHead
+from utils.shape_utils import permute_to_N_HWA_K
 
 
 @pytest.fixture(scope="module")
@@ -36,3 +37,37 @@ def test_retina_head(init_512x512_dummy_data):
     assert pred_bboxes["p5"].shape == (32, 4 * num_anchors, 16, 16)
     assert pred_bboxes["p6"].shape == (32, 4 * num_anchors, 8, 8)
     assert pred_bboxes["p7"].shape == (32, 4 * num_anchors, 4, 4)
+
+
+def test_reshape_retina_head_into_N_KWA_K(init_512x512_dummy_data):
+    data = init_512x512_dummy_data
+    num_anchors = 9
+    num_classes = 20
+
+    backbone = ResNet50()
+    model = RetinaNetFPN50()
+    head = RetinaNetHead(num_classes)
+
+    _, C3, C4, C5 = backbone(data)
+    del data
+    P3, P4, P5, P6, P7 = model(C3, C4, C5)
+    del C3, C4, C5
+    pred_logits, pred_bboxes = head(P3, P4, P5, P6, P7)
+
+    reshaped_logits = [
+        permute_to_N_HWA_K(pred_logits[k], num_classes) for k in pred_logits
+    ]
+
+    reshaped_bboxes = [permute_to_N_HWA_K(pred_bboxes[k], 4) for k in pred_bboxes]
+
+    assert reshaped_logits[0].shape == (32, 64 * 64 * num_anchors, num_classes)
+    assert reshaped_logits[1].shape == (32, 32 * 32 * num_anchors, num_classes)
+    assert reshaped_logits[2].shape == (32, 16 * 16 * num_anchors, num_classes)
+    assert reshaped_logits[3].shape == (32, 8 * 8 * num_anchors, num_classes)
+    assert reshaped_logits[4].shape == (32, 4 * 4 * num_anchors, num_classes)
+
+    assert reshaped_bboxes[0].shape == (32, 64 * 64 * num_anchors, 4)
+    assert reshaped_bboxes[1].shape == (32, 32 * 32 * num_anchors, 4)
+    assert reshaped_bboxes[2].shape == (32, 16 * 16 * num_anchors, 4)
+    assert reshaped_bboxes[3].shape == (32, 8 * 8 * num_anchors, 4)
+    assert reshaped_bboxes[4].shape == (32, 4 * 4 * num_anchors, 4)
