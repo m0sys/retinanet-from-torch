@@ -1,4 +1,4 @@
-"""Untility functions for reshaping Tensors into specific ways."""
+"""Utility functions for reshaping Tensors in specific ways."""
 
 from torch import Tensor
 
