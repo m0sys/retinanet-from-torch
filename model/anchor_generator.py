@@ -145,7 +145,7 @@ class AnchorBoxGenerator(nn.Module):
         )
 
         shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
-        (shift_x,) = shift_x.reshape(-1)
+        shift_x = shift_x.reshape(-1)
         shift_y = shift_y.reshape(-1)
 
         return shift_x, shift_y
