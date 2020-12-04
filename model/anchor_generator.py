@@ -100,7 +100,7 @@ class AnchorBoxGenerator(nn.Module):
 
         """
         grid_sizes = [feature_map.shape[-2:] for feature_map in features]
-        anchors_over_all_feature_maps = self.grid_anchors(grid_sizes)
+        anchors_over_all_feature_maps = self._grid_anchors(grid_sizes)
 
         return anchors_over_all_feature_maps
 
@@ -125,7 +125,7 @@ class AnchorBoxGenerator(nn.Module):
         return anchors
 
     def _create_grid_offsets(
-        size: List[int], stride: int, offset: float, device: torch.device
+        self, size: List[int], stride: int, offset: float, device: torch.device
     ):
         grid_height, grid_width = size
         shifts_x = torch.arange(
