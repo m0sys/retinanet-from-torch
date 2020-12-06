@@ -104,7 +104,7 @@ class RetinaLoss(nn.Module):
         """
 
         num_images = len(gt_labels)
-        gt_labels = torch.stack(gt_labels).squeeze()  # (N, R)
+        gt_labels = torch.stack(gt_labels).squeeze(-1)  # (N, R)
         anchors = cat_boxes(anchors)
         gt_anchor_deltas = [
             self.box2box_transform.get_deltas(anchors, k) for k in gt_boxes
