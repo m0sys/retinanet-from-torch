@@ -16,7 +16,14 @@ def tricked_shortcut(in_channels: int, out_channels: int):
     """
     return nn.Sequential(
         nn.AvgPool2d(stride=2, kernel_size=2),
-        conv1x1(in_channels, out_channels),
+        conv1x1(in_channels, out_channels, use_bias=False),
+        nn.BatchNorm2d(out_channels),
+    )
+
+
+def nondownsample_shortcut(in_channels: int, out_channels: int):
+    return nn.Sequential(
+        conv1x1(in_channels, out_channels, use_bias=False), nn.BatchNorm2d(out_channels)
     )
 
 
@@ -116,20 +123,25 @@ class BottleNeckBlock(nn.Module):
 
         if self.downsample():
             self.shortcut = tricked_shortcut(in_channels, out_channels)
+        elif self.scale_identity():
+            self.shortcut = nondownsample_shortcut(in_channels, out_channels)
         else:
             self.shortcut = None
 
         self.init_weights()
+
+    def downsample(self):
+        ## return self.in_channels != self.out_channels
+        return self.stride != 1
+
+    def scale_identity(self):
+        return self.in_channels != self.out_channels
 
     def init_weights(self):
         """Initializes Conv layer weights using He Init with `fan_out`."""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 c2_msra_fill(m)
-
-    def downsample(self):
-        ## return self.in_channels != self.out_channels
-        return self.stride != 1
 
     def forward(self, x):
         identity = x

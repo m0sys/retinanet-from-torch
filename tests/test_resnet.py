@@ -19,10 +19,10 @@ def test_resnet50_224__wo_classification(init_224x224_dummy_data):
     model = ResNet50()
 
     C2, C3, C4, C5 = model(data)
-    assert C2.shape == (64, 64, 56, 56)
-    assert C3.shape == (64, 128, 28, 28)
-    assert C4.shape == (64, 256, 14, 14)
-    assert C5.shape == (64, 512, 7, 7)
+    assert C2.shape == (64, 256, 56, 56)
+    assert C3.shape == (64, 512, 28, 28)
+    assert C4.shape == (64, 1024, 14, 14)
+    assert C5.shape == (64, 2048, 7, 7)
 
 
 def test_resnet50_512__wo_classification(init_512x512_dummy_data):
@@ -30,10 +30,10 @@ def test_resnet50_512__wo_classification(init_512x512_dummy_data):
     model = ResNet50()
 
     C2, C3, C4, C5 = model(data)
-    assert C2.shape == (64, 64, 128, 128)
-    assert C3.shape == (64, 128, 64, 64)
-    assert C4.shape == (64, 256, 32, 32)
-    assert C5.shape == (64, 512, 16, 16)
+    assert C2.shape == (64, 256, 128, 128)
+    assert C3.shape == (64, 512, 64, 64)
+    assert C4.shape == (64, 1024, 32, 32)
+    assert C5.shape == (64, 2048, 16, 16)
 
 
 def test_resnet50_224__w_classification(init_224x224_dummy_data):
