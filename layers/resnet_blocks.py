@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from layers.wrappers import conv1x1, conv3x3, half_max_pool2d
+from utils.weight_init import c2_msra_fill
 
 
 def tricked_shortcut(in_channels: int, out_channels: int):
@@ -35,6 +36,8 @@ class StandardStem(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.pool = half_max_pool2d()
 
+        c2_msra_fill(self.conv1)
+
     def forward(self, x):
         return self.pool(F.relu(self.bn(self.conv1(x))))
 
@@ -53,16 +56,26 @@ class FastStem(nn.Module):
         self.out_channels = out_channels
 
         self.conv1_1 = nn.Conv2d(
-            in_channels, out_channels // 2, kernel_size=3, stride=2, padding=1
+            in_channels,
+            out_channels // 2,
+            kernel_size=3,
+            stride=2,
+            padding=1,
+            bias=False,
         )
-        self.conv1_2 = conv3x3(out_channels // 2, out_channels // 2)
-        self.conv1_3 = conv3x3(out_channels // 2, out_channels)
+        self.conv1_2 = conv3x3(out_channels // 2, out_channels // 2, use_bias=False)
+        self.conv1_3 = conv3x3(out_channels // 2, out_channels, use_bias=False)
         self.bn1_1 = nn.BatchNorm2d(out_channels // 2)
         self.bn1_2 = nn.BatchNorm2d(out_channels // 2)
         self.bn1_3 = nn.BatchNorm2d(out_channels)
         self.pool1 = half_max_pool2d()
 
-        # TODO: init using kaiming...
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                c2_msra_fill(m)
 
     def forward(self, x):
         out = F.relu(self.bn1_1(self.conv1_1(x)))
@@ -91,13 +104,13 @@ class BottleNeckBlock(nn.Module):
         self.stride = stride
 
         self.block = nn.Sequential(
-            conv1x1(in_channels, bn_channels),
+            conv1x1(in_channels, bn_channels, use_bias=False),
             nn.BatchNorm2d(bn_channels),
             nn.ReLU(inplace=True),
-            conv3x3(bn_channels, bn_channels, stride),
+            conv3x3(bn_channels, bn_channels, stride, use_bias=False),
             nn.BatchNorm2d(bn_channels),
             nn.ReLU(inplace=True),
-            conv1x1(bn_channels, out_channels),
+            conv1x1(bn_channels, out_channels, use_bias=False),
             nn.BatchNorm2d(out_channels),
         )
 
@@ -105,6 +118,14 @@ class BottleNeckBlock(nn.Module):
             self.shortcut = tricked_shortcut(in_channels, out_channels)
         else:
             self.shortcut = None
+
+        self.init_weights()
+
+    def init_weights(self):
+        """Initializes Conv layer weights using He Init with `fan_out`."""
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                c2_msra_fill(m)
 
     def downsample(self):
         ## return self.in_channels != self.out_channels
