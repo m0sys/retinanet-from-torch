@@ -6,6 +6,20 @@ from layers.wrappers import conv1x1, conv3x3, half_max_pool2d
 from utils.weight_init import c2_msra_fill
 
 
+def init_cnn(m):
+    """
+    FastAI XResNet Init.
+
+    see: https://github.com/fastai/fastai/blob/cad02a84e1adfd814bd97ff833a0d9661516308d/fastai/vision/models/xresnet.py#L16
+    """
+    if getattr(m, "bias", None) is not None:
+        nn.init.constant_(m.bias, 0)
+    if isinstance(m, (nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.Linear)):
+        nn.init.kaiming_normal_(m.weight)
+    for l in m.children():
+        init_cnn(l)
+
+
 def tricked_shortcut(in_channels: int, out_channels: int):
     """
     ResNet shortcut connection (path b) as described in
@@ -43,7 +57,7 @@ class StandardStem(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.pool = half_max_pool2d()
 
-        c2_msra_fill(self.conv1)
+        ## c2_msra_fill(self.conv1)
 
     def forward(self, x):
         return self.pool(F.relu(self.bn(self.conv1(x))))
@@ -77,7 +91,7 @@ class FastStem(nn.Module):
         self.bn1_3 = nn.BatchNorm2d(out_channels)
         self.pool1 = half_max_pool2d()
 
-        self.init_weights()
+        ## self.init_weights()
 
     def init_weights(self):
         for m in self.modules():
@@ -128,7 +142,7 @@ class BottleNeckBlock(nn.Module):
         else:
             self.shortcut = None
 
-        self.init_weights()
+        ## self.init_weights()
 
     def downsample(self):
         ## return self.in_channels != self.out_channels
@@ -141,7 +155,7 @@ class BottleNeckBlock(nn.Module):
         """Initializes Conv layer weights using He Init with `fan_out`."""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                c2_msra_fill(m)
+                c2_msra_fill(m)  # detectron init
 
     def forward(self, x):
         identity = x

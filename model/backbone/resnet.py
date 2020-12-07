@@ -6,7 +6,7 @@ from base import BaseModel
 
 from torchvision.models import resnet50
 
-from layers.resnet_blocks import BottleNeckBlock, FastStem, StandardStem
+from layers.resnet_blocks import BottleNeckBlock, FastStem, StandardStem, init_cnn
 
 
 class ResNet50(BaseModel):
@@ -56,8 +56,20 @@ class ResNet50(BaseModel):
             BottleNeckBlock(2048, 2048, 512),
         )
 
-        if self.pretrained:
-            self.preload_model()
+        ## self.init_weights()
+        init_cnn(self)
+
+        ## if self.pretrained:
+        ##     self.preload_model()
+
+    def init_weights(self):
+        # PyTorch ResNet init.
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            elif isinstance(m, (nn.BatchNorm2d)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def _do_classification(self):
         return self.num_classes is not None
@@ -68,7 +80,7 @@ class ResNet50(BaseModel):
 
         # Sec5.1 in "Accurate, Large Minibatch SGD: Training ImageNet
         # in 1 Hour."
-        nn.init.normal_(self.fc.weight, std=0.01)
+        ## nn.init.normal_(self.fc.weight, std=0.01)
 
     def preload_model(self):
         self._create_fc_layer(1000)
@@ -105,7 +117,7 @@ class ResNet50(BaseModel):
         if self._do_classification():
             out = self.global_avg_pooling(out)
             out = torch.squeeze(out)
-            return F.log_softmax(self.fc(out))
+            return F.log_softmax(self.fc(out), dim=1)
 
         return C2, C3, C4, C5  # output format for FPN
 
