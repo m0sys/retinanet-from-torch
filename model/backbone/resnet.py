@@ -4,20 +4,25 @@ import torch.nn as nn
 import torch.nn.functional as F
 from base import BaseModel
 
+from torchvision.models import resnet50
+
 from layers.resnet_blocks import BottleNeckBlock, FastStem, StandardStem
 
 
 class ResNet50(BaseModel):
-    def __init__(self, num_classes: Optional[int] = None):
+    """Standard ResNet50 model."""
+
+    def __init__(self, pretrained=False, num_classes: Optional[int] = None):
         super().__init__()
+        self.pretrained = pretrained
         self.num_classes = num_classes
+
         self.num_features = 2048
 
-        self.stem = FastStem()
+        self.stem = StandardStem() if self.pretrained else FastStem()
 
         if self._do_classification():
-            self.global_avg_pooling = nn.AvgPool2d(kernel_size=7)
-            self.fc = nn.Linear(self.num_features, self.num_classes)
+            self._create_fc_layer(self.num_classes)
 
         # Stage 2:
         self.layer2 = nn.Sequential(
@@ -51,8 +56,31 @@ class ResNet50(BaseModel):
             BottleNeckBlock(2048, 2048, 512),
         )
 
+        if self.pretrained:
+            self.preload_model()
+
     def _do_classification(self):
         return self.num_classes is not None
+
+    def _create_fc_layer(self, num_classes):
+        self.global_avg_pooling = nn.AvgPool2d(kernel_size=7)
+        self.fc = nn.Linear(self.num_features, num_classes)
+
+        # Sec5.1 in "Accurate, Large Minibatch SGD: Training ImageNet
+        # in 1 Hour."
+        nn.init.normal_(self.fc.weight, std=0.01)
+
+    def preload_model(self):
+        self._create_fc_layer(1000)
+        pretrained_model = resnet50(pretrained=True)
+        pretrained_stats = list(pretrained_model.state_dict().items())
+        stats_dict = self.state_dict()
+
+        count = 0
+        for k, _ in stats_dict.items():
+            _, weights = pretrained_stats[count]
+            stats_dict[k] = weights
+            count += 1
 
     def forward(self, x):
         # Stage 1 forward.
@@ -80,3 +108,12 @@ class ResNet50(BaseModel):
             return F.log_softmax(self.fc(out))
 
         return C2, C3, C4, C5  # output format for FPN
+
+
+class XResNet50(BaseModel):
+    """
+    Bag of Tricks ResNet model
+
+    This model is derived from the following paper:
+    "Bag of Tricks for Image Classification with Convolutional Neural Networks"
+    """
