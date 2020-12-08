@@ -6,7 +6,7 @@ from base import BaseModel
 
 from torchvision.models import resnet50
 
-from layers.resnet_blocks import BottleneckBlock, FastStem, StandardStem, init_cnn
+from layers.resnet_blocks import standard_bottleneck_block, StandardStem, BottleneckBlock
 
 class _ResNet(BaseModel):
     "Base ResNet module for all ResNets to inherit from."
@@ -54,41 +54,41 @@ class ResNet50(BaseModel):
 
         self.num_features = 2048
 
-        self.stem = StandardStem() if self.pretrained else FastStem()
+        self.stem = StandardStem()
 
         if self._do_classification():
             self._create_fc_layer(self.num_classes)
 
         # Stage 2:
         self.layer2 = nn.Sequential(
-            BottleneckBlock(64, 256, 64),
-            BottleneckBlock(256, 256, 64),
-            BottleneckBlock(256, 256, 64),
+            standard_bottleneck_block(64, 256, 64),
+            standard_bottleneck_block(256, 256, 64),
+            standard_bottleneck_block(256, 256, 64),
         )
 
         # Stage 3:
         self.layer3 = nn.Sequential(
-            BottleneckBlock(256, 512, 128, stride=2),
-            BottleneckBlock(512, 512, 128),
-            BottleneckBlock(512, 512, 128),
-            BottleneckBlock(512, 512, 128),
+            standard_bottleneck_block(256, 512, 128, stride=2),
+            standard_bottleneck_block(512, 512, 128),
+            standard_bottleneck_block(512, 512, 128),
+            standard_bottleneck_block(512, 512, 128),
         )
 
         # Stage 4:
         self.layer4 = nn.Sequential(
-            BottleneckBlock(512, 1024, 256, stride=2),
-            BottleneckBlock(1024, 1024, 256),
-            BottleneckBlock(1024, 1024, 256),
-            BottleneckBlock(1024, 1024, 256),
-            BottleneckBlock(1024, 1024, 256),
-            BottleneckBlock(1024, 1024, 256),
+            standard_bottleneck_block(512, 1024, 256, stride=2),
+            standard_bottleneck_block(1024, 1024, 256),
+            standard_bottleneck_block(1024, 1024, 256),
+            standard_bottleneck_block(1024, 1024, 256),
+            standard_bottleneck_block(1024, 1024, 256),
+            standard_bottleneck_block(1024, 1024, 256),
         )
 
         # Stage 5:
         self.layer5 = nn.Sequential(
-            BottleneckBlock(1024, 2048, 512, stride=2),
-            BottleneckBlock(2048, 2048, 512),
-            BottleneckBlock(2048, 2048, 512),
+            standard_bottleneck_block(1024, 2048, 512, stride=2),
+            standard_bottleneck_block(2048, 2048, 512),
+            standard_bottleneck_block(2048, 2048, 512),
         )
 
 

@@ -1,10 +1,10 @@
 """Implementation of XResNet."""
-from typing import Optional, List, Type
+from typing import Optional, List, Type, Callable
 
 import torch
 import torch.nn as nn
 
-from layers.resnet_blocks import BottleneckBlock, FastStem, init_c2msr_fill
+from layers.resnet_blocks import FastStem, BottleneckBlock, tricked_bottleneck_block
 
 
 class XResNet(nn.Module):
@@ -35,7 +35,7 @@ class XResNet(nn.Module):
             if name == "res2":
                 stride = 1
 
-            stage = self._make_layer(BottleneckBlock,
+            stage = self._make_layer(tricked_bottleneck_block,
                                      self.num_channels,
                                      layers[i],
                                      stride=stride)
@@ -43,8 +43,6 @@ class XResNet(nn.Module):
             self.add_module(name, stage)
             self.stage_names.append(name)
             self.stages.append(stage)
-
-        init_c2msr_fill(self)
 
         if self._do_classification():
             self._create_fc_layer(num_classes)
@@ -56,13 +54,13 @@ class XResNet(nn.Module):
         self._out_features = out_features
 
     def _make_layer(self,
-                    block: Type[BottleneckBlock],
+                    block_func: Callable[..., BottleneckBlock],
                     planes: int, blocks: int,
                     stride: int = 1
                     ):
         layer = []
         for _ in range(blocks):
-            layer.append(block(self.inplanes, planes, planes // 4, stride=stride))
+            layer.append(block_func(self.inplanes, planes, planes // 4, stride=stride))
             stride = 1
             self.inplanes = planes
 

@@ -26,3 +26,29 @@ def c2_msra_fill(module: nn.Module) -> None:
     nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
     if module.bias is not None:
         nn.init.constant_(module.bias, 0)
+
+
+def init_c2msr_fill(m):
+    """Initializes Conv layer weights using He Init with `fan_out`."""
+    if getattr(m, "bias", None) is not None:
+        nn.init.constant_(m.bias, 0)
+
+    if isinstance(m, (nn.Conv2d)):
+        c2_msra_fill(m)  # detectron init
+
+    for l in m.children():
+        init_c2msr_fill(l)
+
+
+def init_cnn(m):
+    """
+    FastAI XResNet Init.
+
+    see: https://github.com/fastai/fastai/blob/cad02a84e1adfd814bd97ff833a0d9661516308d/fastai/vision/models/xresnet.py#L16
+    """
+    if getattr(m, "bias", None) is not None:
+        nn.init.constant_(m.bias, 0)
+    if isinstance(m, (nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.Linear)):
+        nn.init.kaiming_normal_(m.weight)
+    for l in m.children():
+        init_cnn(l)
