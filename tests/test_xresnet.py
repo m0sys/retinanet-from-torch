@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from model.backbone.xresnet import XResNet, RESNET50_LAYERS, RESNET101_LAYERS, RESNET152_LAYERS
+from model.backbone.xresnet import xresnet50, xresnet101, xresnet152
 
 BATCH_SIZE = 1
 
@@ -18,7 +18,7 @@ def init_512x512_dummy_data():
 def test_xresnet_with_50_layers_224_image_wo_classification(init_224x224_dummy_data):
     data = init_224x224_dummy_data
 
-    model = XResNet(RESNET50_LAYERS, out_features=["res2", "res3", "res4", "res5"])
+    model = xresnet50(out_features=["res2", "res3", "res4", "res5"])
 
     outputs = model(data)
 
@@ -33,7 +33,7 @@ def test_xresnet_with_50_layers_224_image_wo_classification(init_224x224_dummy_d
 def test_xresnet_with_101_layers_224_image_wo_classification(init_224x224_dummy_data):
     data = init_224x224_dummy_data
 
-    model = XResNet(RESNET101_LAYERS, out_features=["res2", "res3", "res4", "res5"])
+    model = xresnet101(out_features=["res2", "res3", "res4", "res5"])
 
     outputs = model(data)
 
@@ -47,7 +47,7 @@ def test_xresnet_with_101_layers_224_image_wo_classification(init_224x224_dummy_
 def test_xresnet_with_152_layers_224_image_wo_classification(init_224x224_dummy_data):
     data = init_224x224_dummy_data
 
-    model = XResNet(RESNET152_LAYERS, out_features=["res2", "res3", "res4", "res5"])
+    model = xresnet152(out_features=["res2", "res3", "res4", "res5"])
 
     outputs = model(data)
 
@@ -63,7 +63,7 @@ def test_xresnet_with_152_layers_224_image_wo_classification(init_224x224_dummy_
 def test_xresnet_with_50_layers_224_image_w_classification(init_224x224_dummy_data):
     data = init_224x224_dummy_data
 
-    model = XResNet(RESNET50_LAYERS, out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
+    model = xresnet50(out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
 
     outputs = model(data)
 
@@ -78,7 +78,7 @@ def test_xresnet_with_50_layers_224_image_w_classification(init_224x224_dummy_da
 def test_xresnet_with_101_layers_224_image_w_classification(init_224x224_dummy_data):
     data = init_224x224_dummy_data
 
-    model = XResNet(RESNET101_LAYERS, out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
+    model = xresnet101(out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
 
     outputs = model(data)
 
@@ -92,7 +92,7 @@ def test_xresnet_with_101_layers_224_image_w_classification(init_224x224_dummy_d
 def test_xresnet_with_152_layers_224_image_w_classification(init_224x224_dummy_data):
     data = init_224x224_dummy_data
 
-    model = XResNet(RESNET152_LAYERS, out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
+    model = xresnet152(out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
 
     outputs = model(data)
 

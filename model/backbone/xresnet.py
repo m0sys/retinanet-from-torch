@@ -3,11 +3,18 @@ from typing import Optional, List, Type
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from layers.resnet_blocks import BottleneckBlock, FastStem, init_c2msr_fill
 
+
 class XResNet(nn.Module):
+    """
+    Base class for creating all variants of XResNet while supporting FPN use-case.
+
+    XResNet is derived from the following paper:
+    "Bag of Tricks for Image Classification with Convolutional Neural Networks"
+
+    """
     def __init__(self,
                  layers: List[int],
                  out_features: Optional[List[str]] = None,
@@ -15,7 +22,6 @@ class XResNet(nn.Module):
         ):
         super().__init__()
         self.inplanes = 64
-        ## self.num_features = 2 ** (len(layers) - 1) * 256
 
         self.num_classes = num_classes
 
@@ -38,12 +44,6 @@ class XResNet(nn.Module):
             self.stage_names.append(name)
             self.stages.append(stage)
 
-
-        ## self.layer1 = self._make_layer(BottleneckBlock, 256, layers[0])
-        ## self.layer2 = self._make_layer(BottleneckBlock, 512, layers[1], stride=2)
-        ## self.layer3 = self._make_layer(BottleneckBlock, 1024, layers[2], stride=2)
-        ## self.layer4 = self._make_layer(BottleneckBlock, 2048, layers[3], stride=2)
-
         init_c2msr_fill(self)
 
         if self._do_classification():
@@ -55,15 +55,14 @@ class XResNet(nn.Module):
 
         self._out_features = out_features
 
-
     def _make_layer(self,
                     block: Type[BottleneckBlock],
                     planes: int, blocks: int,
                     stride: int = 1
                     ):
         layer = []
-        for i in range(blocks):
-            layer.append(BottleneckBlock(self.inplanes, planes, planes // 4, stride=stride))
+        for _ in range(blocks):
+            layer.append(block(self.inplanes, planes, planes // 4, stride=stride))
             stride = 1
             self.inplanes = planes
 
@@ -95,40 +94,32 @@ class XResNet(nn.Module):
 
         if self._do_classification():
             out = self.global_avg_pooling(out)
-            out = torch.squeeze(out)
+            out = torch.flatten(out, start_dim=1)
             if "fc" in self._out_features:
                 outputs["fc"] = out
 
         return outputs
 
-        ## # Stage 1 forward.
-        ## out = self.stem(x)
 
-        ## # Stage 2 forward.
-        ## out = self.layer1(out)
-        ## C2 = out
-
-        ## # Stage 3 forwards
-        ## out = self.layer2(out)
-        ## C3 = out
-
-        ## # Stage 4 forward.
-        ## out = self.layer3(out)
-        ## C4 = out
-
-        ## # Stage 5 forward.
-        ## out = self.layer4(out)
-        ## C5 = out
-
-        ## if self._do_classification():
-        ##     out = self.global_avg_pooling(out)
-        ##     out = torch.squeeze(out)
-        ##     return self.fc(out)
-
-        ## return C2, C3, C4, C5  # output format for FPN
+def xresnet50(out_features: Optional[List[str]] = None,
+              num_classes: Optional[int] = None):
+    """Create a XResNet model 50 layers deep."""
+    return XResNet(_RESNET50_LAYERS, out_features, num_classes)
 
 
-RESNET34_LAYERS = [3, 4, 6, 3]
-RESNET50_LAYERS = [3, 4, 6, 3]
-RESNET101_LAYERS = [3, 4, 23, 3]
-RESNET152_LAYERS = [3, 8, 36, 3]
+def xresnet101(out_features: Optional[List[str]] = None,
+               num_classes: Optional[int] = None):
+    """Create a XResNet model 101 layers deep."""
+    return XResNet(_RESNET101_LAYERS, out_features, num_classes)
+
+
+def xresnet152(out_features: Optional[List[str]] = None,
+               num_classes: Optional[int] = None):
+    """Create a XResNet model 152 layers deep."""
+    return XResNet(_RESNET152_LAYERS, out_features, num_classes)
+
+
+_RESNET34_LAYERS = [3, 4, 6, 3]
+_RESNET50_LAYERS = [3, 4, 6, 3]
+_RESNET101_LAYERS = [3, 4, 23, 3]
+_RESNET152_LAYERS = [3, 8, 36, 3]
