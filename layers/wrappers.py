@@ -17,8 +17,8 @@ def conv3x3(
     )
 
 
-def conv1x1(in_channels: int, out_channels, use_bias=True):
-    return nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=use_bias)
+def conv1x1(in_channels: int, out_channels, stride=1, use_bias=True):
+    return nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=use_bias)
 
 
 def half_max_pool2d():

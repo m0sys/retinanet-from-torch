@@ -5,6 +5,17 @@ import torch.nn.functional as F
 from layers.wrappers import conv1x1, conv3x3, half_max_pool2d
 from utils.weight_init import c2_msra_fill
 
+def init_c2msr_fill(m):
+    """Initializes Conv layer weights using He Init with `fan_out`."""
+    if getattr(m, "bias", None) is not None:
+        nn.init.constant_(m.bias, 0)
+
+    if isinstance(m, (nn.Conv2d)):
+        c2_msra_fill(m)  # detectron init
+
+    for l in m.children():
+        init_c2msr_fill(l)
+
 
 def init_cnn(m):
     """
@@ -35,6 +46,23 @@ def tricked_shortcut(in_channels: int, out_channels: int):
     )
 
 
+def standard_shortcut(in_channels: int, out_channels: int):
+    """
+    Standard ResNet shortcut connection.
+    """
+
+    return nn.Sequential(
+        conv1x1(
+            in_channels,
+            out_channels,
+            stride=2,
+            use_bias=False
+        ),
+        nn.BatchNorm2d(out_channels),
+
+    )
+
+
 def nondownsample_shortcut(in_channels: int, out_channels: int):
     return nn.Sequential(
         conv1x1(in_channels, out_channels, use_bias=False), nn.BatchNorm2d(out_channels)
@@ -57,7 +85,7 @@ class StandardStem(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.pool = half_max_pool2d()
 
-        ## c2_msra_fill(self.conv1)
+        init_c2msr_fill(self)
 
     def forward(self, x):
         return self.pool(F.relu(self.bn(self.conv1(x))))
@@ -91,12 +119,9 @@ class FastStem(nn.Module):
         self.bn1_3 = nn.BatchNorm2d(out_channels)
         self.pool1 = half_max_pool2d()
 
-        ## self.init_weights()
+        init_c2msr_fill(self)
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                c2_msra_fill(m)
+
 
     def forward(self, x):
         out = F.relu(self.bn1_1(self.conv1_1(x)))
@@ -106,7 +131,7 @@ class FastStem(nn.Module):
         return self.pool1(out)
 
 
-class BottleNeckBlock(nn.Module):
+class BottleneckBlock(nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -142,7 +167,6 @@ class BottleNeckBlock(nn.Module):
         else:
             self.shortcut = None
 
-        ## self.init_weights()
 
     def downsample(self):
         ## return self.in_channels != self.out_channels
@@ -151,11 +175,8 @@ class BottleNeckBlock(nn.Module):
     def scale_identity(self):
         return self.in_channels != self.out_channels
 
-    def init_weights(self):
-        """Initializes Conv layer weights using He Init with `fan_out`."""
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                c2_msra_fill(m)  # detectron init
+
+
 
     def forward(self, x):
         identity = x
