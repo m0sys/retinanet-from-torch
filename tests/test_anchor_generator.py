@@ -7,9 +7,11 @@ from model.anchor_generator import AnchorBoxGenerator
 from utils.box_utils import cat_boxes
 
 
+BATCH_SIZE = 1
+
 @pytest.fixture(scope="module")
 def init_512x512_dummy_data():
-    return torch.randn((32, 3, 512, 512))
+    return torch.randn((BATCH_SIZE, 3, 512, 512))
 
 
 def test_anchor_generator(init_512x512_dummy_data):

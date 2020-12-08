@@ -8,7 +8,7 @@ from model.anchor_generator import AnchorBoxGenerator
 from model.matcher import Matcher
 from utils.box_utils import cat_boxes, pairwise_iou
 
-BATCH_SIZE = 32
+BATCH_SIZE = 1
 
 
 @pytest.fixture(scope="module")
