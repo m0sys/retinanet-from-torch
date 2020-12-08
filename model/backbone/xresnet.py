@@ -74,7 +74,7 @@ class XResNet(nn.Module):
 
     def _create_fc_layer(self, num_classes):
         self.global_avg_pooling = nn.AvgPool2d(kernel_size=7)
-        self.fc = nn.Linear(self.num_features, num_classes)
+        self.fc = nn.Linear(self.num_channels, num_classes)
 
         # Sec5.1 in "Accurate, Large Minibatch SGD: Training ImageNet
         # in 1 Hour."

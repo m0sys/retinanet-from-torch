@@ -137,7 +137,7 @@ class BottleneckBlock(nn.Module):
         in_channels: int,
         out_channels: int,
         bn_channels: int,
-        stride: Optional[int] = 1,
+        stride: int = 1,
     ):
         """
         Args:
