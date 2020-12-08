@@ -117,7 +117,7 @@ class ResNet50(BaseModel):
         if self._do_classification():
             out = self.global_avg_pooling(out)
             out = torch.squeeze(out)
-            return F.log_softmax(self.fc(out), dim=1)
+            return self.fc(out)
 
         return C2, C3, C4, C5  # output format for FPN
 
