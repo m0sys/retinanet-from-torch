@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 
 from layers.resnet_blocks import FastStem, BottleneckBlock, tricked_bottleneck_block
+from utils.weight_init import init_bn, init_c2msr_fill
 
 
 class XResNet(nn.Module):
@@ -18,10 +19,12 @@ class XResNet(nn.Module):
     def __init__(self,
                  layers: List[int],
                  out_features: Optional[List[str]] = None,
-                 num_classes: Optional[int] = None
+                 num_classes: Optional[int] = None,
+                 train_mode=False
         ):
         super().__init__()
         self.inplanes = 64
+        self.train_mode= train_mode
 
         self.num_classes = num_classes
 
@@ -45,13 +48,16 @@ class XResNet(nn.Module):
             self.stages.append(stage)
 
         if self._do_classification():
-            self._create_fc_layer(num_classes)
+            self._create_fc_layer()
             name = "fc"
 
         if out_features is None:
             out_features = [name]
 
         self._out_features = out_features
+
+        init_c2msr_fill(self)
+        init_bn(self)
 
     def _make_layer(self,
                     block_func: Callable[..., BottleneckBlock],
@@ -69,9 +75,9 @@ class XResNet(nn.Module):
     def _do_classification(self):
         return self.num_classes is not None
 
-    def _create_fc_layer(self, num_classes):
+    def _create_fc_layer(self):
         self.global_avg_pooling = nn.AvgPool2d(kernel_size=7)
-        self.fc = nn.Linear(self.num_channels, num_classes)
+        self.fc = nn.Linear(self.num_channels, self.num_classes)
 
         # Sec5.1 in "Accurate, Large Minibatch SGD: Training ImageNet
         # in 1 Hour."
@@ -93,6 +99,11 @@ class XResNet(nn.Module):
         if self._do_classification():
             out = self.global_avg_pooling(out)
             out = torch.flatten(out, start_dim=1)
+            out = self.fc(out)
+
+            if self.train_mode:
+                return out
+
             if "fc" in self._out_features:
                 outputs["fc"] = out
 
@@ -100,21 +111,21 @@ class XResNet(nn.Module):
 
 
 def xresnet50(out_features: Optional[List[str]] = None,
-              num_classes: Optional[int] = None):
+              num_classes: Optional[int] = None, train_mode=False):
     """Create a XResNet model 50 layers deep."""
-    return XResNet(_RESNET50_LAYERS, out_features, num_classes)
+    return XResNet(_RESNET50_LAYERS, out_features, num_classes, train_mode)
 
 
 def xresnet101(out_features: Optional[List[str]] = None,
-               num_classes: Optional[int] = None):
+               num_classes: Optional[int] = None, train_mode=False):
     """Create a XResNet model 101 layers deep."""
-    return XResNet(_RESNET101_LAYERS, out_features, num_classes)
+    return XResNet(_RESNET101_LAYERS, out_features, num_classes, train_mode)
 
 
 def xresnet152(out_features: Optional[List[str]] = None,
-               num_classes: Optional[int] = None):
+               num_classes: Optional[int] = None, train_mode=False):
     """Create a XResNet model 152 layers deep."""
-    return XResNet(_RESNET152_LAYERS, out_features, num_classes)
+    return XResNet(_RESNET152_LAYERS, out_features, num_classes, train_mode)
 
 
 _RESNET34_LAYERS = [3, 4, 6, 3]

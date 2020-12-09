@@ -58,7 +58,7 @@ class FastStem(nn.Module):
         self.bn1_3 = nn.BatchNorm2d(out_channels)
         self.pool1 = half_max_pool2d()
 
-        init_c2msr_fill(self)
+        ## init_c2msr_fill(self)
 
     def forward(self, x):
         out = F.relu(self.bn1_1(self.conv1_1(x)))
@@ -106,7 +106,7 @@ class BottleneckBlock(nn.Module):
         else:
             self.shortcut = None
 
-        init_c2msr_fill(self)
+        ## init_c2msr_fill(self)
 
     def downsample(self):
         return self.in_channels != self.out_channels

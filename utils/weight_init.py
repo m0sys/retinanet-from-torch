@@ -52,3 +52,13 @@ def init_cnn(m):
         nn.init.kaiming_normal_(m.weight)
     for l in m.children():
         init_cnn(l)
+
+def init_bn(m):
+    """
+    PyTorch ResNet init for `nn.BatchNorm2d` layers.
+    """
+    if isinstance(m, (nn.BatchNorm2d)):
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+    for l in m.children():
+        init_bn(l)
