@@ -8,6 +8,7 @@ from fastai.vision.all import (
     untar_data,
     get_image_files,
     GrandparentSplitter,
+    Pipeline,
     Datasets,
     ToTensor,
     RandomResizedCrop,
@@ -79,3 +80,17 @@ class ImagenetteDataLoaders:
 
     def split_validation(self):
         return self.dls.valid
+
+
+def load_imagenette160_dls(image_size = 224, bs=64):
+    source = untar_data(URLs.IMAGENETTE_160)
+    fnames = get_image_files(source)
+    tfm = Pipeline([parent_label, lbl_dict.__getitem__,
+                    Categorize(vocab=lbl_dict.values())])
+    splits = GrandparentSplitter(valid_name='val')(fnames)
+    dsets = Datasets(fnames, [[PILImage.create], tfm], splits=splits)
+    item_tfms = [ToTensor, RandomResizedCrop(image_size, min_scale=0.35)]
+    batch_tfms = [IntToFloatTensor, Normalize.from_stats(*imagenet_stats)]
+    return dsets.dataloaders(after_item=item_tfms, after_batch=batch_tfms, bs=bs, num_workers=1)
+
+
