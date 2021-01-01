@@ -1,11 +1,19 @@
-"""Implementation of XResNet."""
+"""
+This module contains implementation for the XResNet model.
+
+For more details see `paper`: "Bag of Tricks for Image Classification
+with Convolutional Neural Networks" @ https://arxiv.org/abs/1812.01187
+"""
+
 from typing import Optional, List, Type, Callable
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from layers.resnet_blocks import FastStem, BottleneckBlock, tricked_bottleneck_block
-from utils.weight_init import init_bn, init_c2msr_fill
+from layers.resnet_blocks import BottleneckBlock
+from layers.xresnet_blocks import FastStem, tricked_bottleneck_block
+from utils.weight_init import init_bn, init_c2msr_fill, init_cnn
 
 
 class XResNet(nn.Module):
@@ -20,15 +28,17 @@ class XResNet(nn.Module):
                  layers: List[int],
                  out_features: Optional[List[str]] = None,
                  num_classes: Optional[int] = None,
-                 train_mode=False
+                 train_mode=False,
+                 use_dropout=False,
         ):
         super().__init__()
         self.inplanes = 64
         self.train_mode= train_mode
+        self.use_dropout = use_dropout
 
         self.num_classes = num_classes
 
-        self.stem = FastStem()
+        self.stem = FastStem(use_dropout=use_dropout)
 
         self.stage_names, self.stages = [], []
         for i, num_blocks in enumerate(layers):
@@ -56,7 +66,7 @@ class XResNet(nn.Module):
 
         self._out_features = out_features
 
-        init_c2msr_fill(self)
+        init_cnn(self)
         init_bn(self)
 
     def _make_layer(self,
@@ -99,6 +109,8 @@ class XResNet(nn.Module):
         if self._do_classification():
             out = self.global_avg_pooling(out)
             out = torch.flatten(out, start_dim=1)
+            if self.use_dropout:
+                out = F.dropout(out)
             out = self.fc(out)
 
             if self.train_mode:
@@ -111,21 +123,21 @@ class XResNet(nn.Module):
 
 
 def xresnet50(out_features: Optional[List[str]] = None,
-              num_classes: Optional[int] = None, train_mode=False):
+              num_classes: Optional[int] = None, train_mode=False, use_dropout=False):
     """Create a XResNet model 50 layers deep."""
-    return XResNet(_RESNET50_LAYERS, out_features, num_classes, train_mode)
+    return XResNet(_RESNET50_LAYERS, out_features, num_classes, train_mode, use_dropout)
 
 
 def xresnet101(out_features: Optional[List[str]] = None,
-               num_classes: Optional[int] = None, train_mode=False):
+               num_classes: Optional[int] = None, train_mode=False, use_dropout=False):
     """Create a XResNet model 101 layers deep."""
-    return XResNet(_RESNET101_LAYERS, out_features, num_classes, train_mode)
+    return XResNet(_RESNET101_LAYERS, out_features, num_classes, train_mode, use_dropout)
 
 
 def xresnet152(out_features: Optional[List[str]] = None,
-               num_classes: Optional[int] = None, train_mode=False):
+               num_classes: Optional[int] = None, train_mode=False, use_dropout=False):
     """Create a XResNet model 152 layers deep."""
-    return XResNet(_RESNET152_LAYERS, out_features, num_classes, train_mode)
+    return XResNet(_RESNET152_LAYERS, out_features, num_classes, train_mode, use_dropout)
 
 
 _RESNET34_LAYERS = [3, 4, 6, 3]
