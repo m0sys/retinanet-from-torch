@@ -6,7 +6,56 @@ from base import BaseModel
 
 from torchvision.models import resnet50
 
+from model.backbone.resnet_interface import ResNetInterface
 from layers.resnet_blocks import standard_bottleneck_block, StandardStem, BottleneckBlock
+
+
+# The Good Implementation.
+
+class ResNet(ResNetInterface):
+    """
+    Base class for creating all variants of ResNet while supporting FPN use-case.
+
+    XResNet is derived from the following paper:
+    "Bag of Tricks for Image Classification with Convolutional Neural Networks"
+
+    """
+    def __init__(self,
+                 layers: List[int],
+                 out_features: Optional[List[str]] = None,
+                 num_classes: Optional[int] = None,
+                 train_mode=False,
+                 use_dropout=False,
+        ):
+        stem = StandardStem(use_dropout=use_dropout)
+        super().__init__(layers, stem, standard_bottleneck_block, out_features, num_classes, train_mode, use_dropout)
+
+
+def resnet50(out_features: Optional[List[str]] = None,
+              num_classes: Optional[int] = None, train_mode=False, use_dropout=False):
+    """Create a ResNet model 50 layers deep."""
+    return ResNet(_RESNET50_LAYERS, out_features, num_classes, train_mode, use_dropout)
+
+
+def resnet101(out_features: Optional[List[str]] = None,
+               num_classes: Optional[int] = None, train_mode=False, use_dropout=False):
+    """Create a ResNet model 101 layers deep."""
+    return ResNet(_RESNET101_LAYERS, out_features, num_classes, train_mode, use_dropout)
+
+
+def resnet152(out_features: Optional[List[str]] = None,
+               num_classes: Optional[int] = None, train_mode=False, use_dropout=False):
+    """Create a ResNet model 152 layers deep."""
+    return ResNet(_RESNET152_LAYERS, out_features, num_classes, train_mode, use_dropout)
+
+
+_RESNET34_LAYERS = [3, 4, 6, 3]
+_RESNET50_LAYERS = [3, 4, 6, 3]
+_RESNET101_LAYERS = [3, 4, 23, 3]
+_RESNET152_LAYERS = [3, 8, 36, 3]
+
+
+# Everything to get rid of.
 
 class _ResNet(BaseModel):
     "Base ResNet module for all ResNets to inherit from."
