@@ -8,7 +8,6 @@ with Convolutional Neural Networks" @ https://arxiv.org/abs/1812.01187
 from typing import Optional, List
 
 from model.backbone.resnet_interface import ResNetInterface
-from layers.resnet_blocks import BottleneckBlock
 from layers.xresnet_blocks import FastStem, tricked_bottleneck_block
 
 

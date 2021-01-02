@@ -2,7 +2,7 @@ import random
 import pytest
 import torch
 
-from model.backbone.resnet import ResNet50
+from model.backbone.resnet import resnet50
 from model.backbone.retina_meta import RetinaNetFPN50
 from model.anchor_generator import AnchorBoxGenerator
 from model.matcher import Matcher
@@ -35,7 +35,7 @@ def test_matcher(init_512x512_dummy_data, init_dummy_target_boxes):
     labels = [-1, 0, 1]
     thresh = [0.4, 0.5]
 
-    backbone = ResNet50()
+    backbone = resnet50(out_features=["res3", "res4", "res5"])
     model = RetinaNetFPN50()
     anchor_gen = AnchorBoxGenerator(
         sizes=[32.0, 64.0, 128.0, 256.0, 512.0],
@@ -46,7 +46,10 @@ def test_matcher(init_512x512_dummy_data, init_dummy_target_boxes):
 
     anchor_matcher = Matcher(labels=labels, thresholds=thresh)
 
-    _, C3, C4, C5 = backbone(data)
+    outputs = backbone(data)
+    C3 = outputs["res3"]
+    C4 = outputs["res4"]
+    C5 = outputs["res5"]
     P3, P4, P5, P6, P7 = model(C3, C4, C5)
 
     all_anchors = anchor_gen([P3, P4, P5, P6, P7])

@@ -1,13 +1,14 @@
 import pytest
 import torch
 
-from model.backbone.resnet import ResNet50
+from model.backbone.resnet import resnet50
 from model.backbone.retina_meta import RetinaNetFPN50
 from model.anchor_generator import AnchorBoxGenerator
 from utils.box_utils import cat_boxes
 
 
 BATCH_SIZE = 1
+
 
 @pytest.fixture(scope="module")
 def init_512x512_dummy_data():
@@ -18,7 +19,7 @@ def test_anchor_generator(init_512x512_dummy_data):
     data = init_512x512_dummy_data
     num_anchors = 9
 
-    backbone = ResNet50()
+    backbone = resnet50(out_features=["res3", "res4", "res5"])
     model = RetinaNetFPN50()
     anchor_gen = AnchorBoxGenerator(
         sizes=[32.0, 64.0, 128.0, 256.0, 512.0],
@@ -27,7 +28,10 @@ def test_anchor_generator(init_512x512_dummy_data):
         strides=[2, 2, 2, 2, 2],
     )
 
-    _, C3, C4, C5 = backbone(data)
+    outputs = backbone(data)
+    C3 = outputs["res3"]
+    C4 = outputs["res4"]
+    C5 = outputs["res5"]
     P3, P4, P5, P6, P7 = model(C3, C4, C5)
 
     all_anchors = anchor_gen([P3, P4, P5, P6, P7])
@@ -51,7 +55,7 @@ def test_cat_anchor_boxes(init_512x512_dummy_data):
         + 4 * 4 * num_anchors
     )
 
-    backbone = ResNet50()
+    backbone = resnet50(out_features=["res3", "res4", "res5"])
     model = RetinaNetFPN50()
     anchor_gen = AnchorBoxGenerator(
         sizes=[32.0, 64.0, 128.0, 256.0, 512.0],
@@ -60,7 +64,10 @@ def test_cat_anchor_boxes(init_512x512_dummy_data):
         strides=[2, 2, 2, 2, 2],
     )
 
-    _, C3, C4, C5 = backbone(data)
+    outputs = backbone(data)
+    C3 = outputs["res3"]
+    C4 = outputs["res4"]
+    C5 = outputs["res5"]
     P3, P4, P5, P6, P7 = model(C3, C4, C5)
 
     all_anchors = anchor_gen([P3, P4, P5, P6, P7])

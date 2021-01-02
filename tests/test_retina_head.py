@@ -1,12 +1,13 @@
 import pytest
 import torch
 
-from model.backbone.resnet import ResNet50
+from model.backbone.resnet import resnet50
 from model.backbone.retina_meta import RetinaNetFPN50, RetinaNetHead
 from utils.shape_utils import permute_to_N_HWA_K
 
 
 BATCH_SIZE = 1
+
 
 @pytest.fixture(scope="module")
 def init_512x512_dummy_data():
@@ -18,11 +19,15 @@ def test_retina_head(init_512x512_dummy_data):
     num_anchors = 9
     num_classes = 20
 
-    backbone = ResNet50()
+    backbone = resnet50(out_features=["res3", "res4", "res5"])
     model = RetinaNetFPN50()
     head = RetinaNetHead(20)
 
-    _, C3, C4, C5 = backbone(data)
+    outputs = backbone(data)
+    C3 = outputs["res3"]
+    C4 = outputs["res4"]
+    C5 = outputs["res5"]
+
     del data
     P3, P4, P5, P6, P7 = model(C3, C4, C5)
     del C3, C4, C5
@@ -46,11 +51,14 @@ def test_reshape_retina_head_into_N_KWA_K(init_512x512_dummy_data):
     num_anchors = 9
     num_classes = 20
 
-    backbone = ResNet50()
+    backbone = resnet50(out_features=["res3", "res4", "res5"])
     model = RetinaNetFPN50()
     head = RetinaNetHead(num_classes)
 
-    _, C3, C4, C5 = backbone(data)
+    outputs = backbone(data)
+    C3 = outputs["res3"]
+    C4 = outputs["res4"]
+    C5 = outputs["res5"]
     del data
     P3, P4, P5, P6, P7 = model(C3, C4, C5)
     del C3, C4, C5

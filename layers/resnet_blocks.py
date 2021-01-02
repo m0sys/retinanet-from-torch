@@ -6,10 +6,8 @@ For more details see `paper`: "Deep Residual Learning for Image Recognition" @ h
 
 from typing import Callable
 import torch.nn as nn
-import torch.nn.functional as F
 
 from layers.wrappers import conv1x1, conv3x3, half_max_pool2d
-from utils.weight_init import init_c2msr_fill
 
 
 class StandardStem(nn.Module):
@@ -26,16 +24,22 @@ class StandardStem(nn.Module):
         self.conv1 = nn.Conv2d(
             in_channels, out_channels, kernel_size=7, stride=2, padding=3, bias=False
         )
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.pool = half_max_pool2d()
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = half_max_pool2d()
 
-        init_c2msr_fill(self)
+        if use_dropout:
+            self.dropout = nn.Dropout2d()
+        else: self.dropout = None
 
     def _apply_dropout(self, x):
-        return F.dropout(x) if self.use_dropout else x
+        if self.use_dropout:
+            return self.dropout(x)
+        else:
+            return x
 
     def forward(self, x):
-        out = self.pool(F.relu(self.bn(self.conv1(x))))
+        out = self.maxpool(self.relu(self.bn1(self.conv1(x))))
         return self._apply_dropout(out)
 
 
@@ -62,34 +66,33 @@ class BottleneckBlock(nn.Module):
         self.bn_channels = bn_channels
         self.stride = stride
 
-        self.block = nn.Sequential(
-            conv1x1(in_channels, bn_channels, use_bias=False),
-            nn.BatchNorm2d(bn_channels),
-            nn.ReLU(inplace=True),
-            conv3x3(bn_channels, bn_channels, stride, use_bias=False),
-            nn.BatchNorm2d(bn_channels),
-            nn.ReLU(inplace=True),
-            conv1x1(bn_channels, out_channels, use_bias=False),
-            nn.BatchNorm2d(out_channels),
-        )
+        self.conv1 = conv1x1(in_channels, bn_channels, use_bias=False)
+        self.bn1 = nn.BatchNorm2d(bn_channels)
+        self.conv2 = conv3x3(bn_channels, bn_channels, stride, use_bias=False)
+        self.bn2 = nn.BatchNorm2d(bn_channels)
+        self.conv3 = conv1x1(bn_channels, out_channels, use_bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
 
-        if self.downsample():
-            self.shortcut = shortcut_func(in_channels, out_channels, stride=stride)
+        if self.do_downsample():
+            self.downsample = shortcut_func(in_channels, out_channels, stride=stride)
         else:
-            self.shortcut = None
+            self.downsample = None
 
-    def downsample(self):
+    def do_downsample(self):
         return self.in_channels != self.out_channels
 
     def forward(self, x):
         identity = x
-        out = self.block(x)
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn2(self.conv2(out)))
+        out = self.bn3(self.conv3(out))
 
-        if self.shortcut is not None:
-            identity = self.shortcut(x)
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
         out += identity
-        out = F.relu(out)
+        out = self.relu(out)
         return out
 
 

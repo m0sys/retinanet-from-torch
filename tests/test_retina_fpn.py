@@ -1,10 +1,11 @@
 import pytest
 import torch
 
-from model.backbone.resnet import ResNet50
+from model.backbone.resnet import resnet50
 from model.backbone.retina_meta import RetinaNetFPN50
 
 BATCH_SIZE = 1
+
 
 @pytest.fixture(scope="module")
 def init_512x512_dummy_data():
@@ -13,10 +14,14 @@ def init_512x512_dummy_data():
 
 def test_retina_fpn(init_512x512_dummy_data):
     data = init_512x512_dummy_data
-    backbone = ResNet50()
+    backbone = resnet50(out_features=["res3", "res4", "res5"])
     model = RetinaNetFPN50()
 
-    _, C3, C4, C5 = backbone(data)
+    outputs = backbone(data)
+    C3 = outputs["res3"]
+    C4 = outputs["res4"]
+    C5 = outputs["res5"]
+
     P3, P4, P5, P6, P7 = model(C3, C4, C5)
 
     assert P3.shape == (BATCH_SIZE, 256, 64, 64)

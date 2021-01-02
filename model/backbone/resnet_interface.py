@@ -3,7 +3,7 @@ This module contains an interface to accomidate both ResNet
 and XResNet models.
 """
 
-from typing import Optional, List, Type, Callable
+from typing import Optional, List, Callable
 from abc import ABCMeta
 
 import torch
@@ -11,8 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from layers.resnet_blocks import BottleneckBlock
-from layers.xresnet_blocks import FastStem, tricked_bottleneck_block
-from utils.weight_init import init_bn, init_c2msr_fill, init_cnn
+from utils.weight_init import init_bn, init_cnn
 
 
 class ResNetInterface(nn.Module, metaclass=ABCMeta):
