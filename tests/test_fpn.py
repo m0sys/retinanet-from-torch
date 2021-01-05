@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from model.backbone.resnet import resnet50
-from model.fpn import FPN
+from model.backbone.fpn import FPN
 
 BATCH_SIZE = 1
 
