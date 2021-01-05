@@ -3,13 +3,13 @@ This module contains the implementation for a dynamic FPN model.
 
 For details see <paper>: https://arxiv.org/abs/1612.03144
 """
-## import pdb
-from typing import List
+from typing import List, Optional
 import torch.nn as nn
 from torch import Tensor
 
 from layers.upsample import LateralUpsampleMerge
 from layers.wrappers import conv1x1, conv3x3
+from utils.weight_init import init_cnn
 
 
 class FPN(nn.Module):
@@ -26,6 +26,7 @@ class FPN(nn.Module):
         self,
         upsample_stages: List[int],
         downsample_stages: List[int],
+        out_feature_names: Optional[List[str]] = None,
         out_features=256,
     ):
         """
@@ -38,14 +39,20 @@ class FPN(nn.Module):
         super().__init__()
         self._num_us = len(upsample_stages)
         self._num_ds = len(downsample_stages)
-        self.out_features = 256
+        self.out_feature_names = out_feature_names
+        self.out_features = out_features
 
-        self._make_upsample_stages(upsample_stages)
-        self._make_downsample_stages(downsample_stages)
+        u_feat_names = self._make_upsample_stages(upsample_stages)
+        d_feat_names = self._make_downsample_stages(downsample_stages)
+
+        if self.out_feature_names is None:
+            self.out_feature_names = u_feat_names + d_feat_names
 
         self.relu = nn.ReLU(inplace=True)
+        init_cnn(self)
 
     def _make_upsample_stages(self, upsample_stages):
+        out_feat_names = []
         total_stages = self._num_us + self._num_ds
         up_start = total_stages - self._num_us
         self.upsample_stage_names, self.upsample_stages = [], []
@@ -57,8 +64,11 @@ class FPN(nn.Module):
             self.add_module(stage_name, stage)
             self.upsample_stages.append(stage)
             self.upsample_stage_names.append(stage_name)
+            out_feat_names.append(stage_name)
+        return out_feat_names
 
     def _make_downsample_stages(self, downsample_stages):
+        out_feat_names = []
         total_stages = self._num_us + self._num_ds
         up_start = total_stages - self._num_us
         self.stage_names, self.stages, self.lat_stages = [], [], []
@@ -78,6 +88,8 @@ class FPN(nn.Module):
             self.lat_stages.append(lat_stage)
             self.stages.append(conv_stage)
             self.stage_names.append(stage_name)
+            out_feat_names.append(stage_name)
+        return out_feat_names
 
     def forward(self, inputs: List[Tensor]):
         assert len(inputs) == len(self.stages)
@@ -88,9 +100,14 @@ class FPN(nn.Module):
         return {**us_outputs, **ds_outputs}
 
     def _forward_upsampling_stages(self, inputs: List[Tensor]):
+        """
+        Run through upsampling part of the top-down path.
+
+        This is what provides for the modification for the FPN
+        model used in the RetinaNet paper.
+        """
         outputs = {}
 
-        # Do upsampling.
         out = inputs[-1]
         upsample_idxs = list(range(self._num_us))
         for i, name, stage in zip(
@@ -101,13 +118,18 @@ class FPN(nn.Module):
                 outputs[name] = out
             else:
                 out = stage(self.relu(out))
-                outputs[name] = out
+                if name in self.out_feature_names:
+                    outputs[name] = out
         return outputs
 
     def _forward_downsampling_stages(self, inputs: List[Tensor]):
+        """
+        Run through downsampling part of the top-down path.
+
+        This is the standard FPN forward implementation.
+        """
         outputs = {}
 
-        # Do downsampling.
         out = inputs[-1]
         rev_inp_idxs = list(range(len(inputs) - 1, -1, -1))
         for i, name, stage, lat_stage in zip(
@@ -118,5 +140,6 @@ class FPN(nn.Module):
             else:
                 lat_out = lat_stage(out, inputs[i])
             out = stage(lat_out)
-            outputs[name] = out
+            if name in self.out_feature_names:
+                outputs[name] = out
         return outputs
