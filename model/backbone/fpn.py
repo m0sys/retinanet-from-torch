@@ -143,3 +143,15 @@ class FPN(nn.Module):
             if name in self.out_feature_names:
                 outputs[name] = out
         return outputs
+
+
+def retinanet_fpn_resnet(out_features=256, out_feat_names: Optional[List[str]] = None):
+    return FPN(
+        _RETINANET_FPN_RESNET["upsampling"],
+        _RETINANET_FPN_RESNET["downsampling"],
+        out_feat_names,
+        out_features,
+    )
+
+
+_RETINANET_FPN_RESNET = {"upsampling": [2048, 256], "downsampling": [2048, 1024, 512]}
