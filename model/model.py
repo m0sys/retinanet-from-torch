@@ -1,9 +1,10 @@
-from typing import Optional, Type
+from typing import Optional, Callable
 import torch.nn as nn
 
 from base import BaseModel
-from model.backbone.resnet import ResNet50
+from model.backbone.resnet import resnet50, resnet101, resnet152
 from model.backbone.retina_meta import RetinaNetFPN50, RetinaNetHead
+from model.backbone.fpn import retinanet_fpn_resnet
 from model.anchor_generator import AnchorBoxGenerator
 from utils.shape_utils import permute_to_N_HWA_K
 
@@ -20,7 +21,11 @@ class RetinaNet500(BaseModel):
         )
 
         self.model = _RetinaNet(
-            ResNet50, RetinaNetFPN50, RetinaNetHead, anchor_gen, num_classes=num_classes
+            resnet50(),
+            retinanet_fpn_resnet(),
+            RetinaNetHead(),
+            anchor_gen,
+            num_classes=num_classes,
         )
 
     def forward(self, x):
@@ -30,22 +35,31 @@ class RetinaNet500(BaseModel):
 class _RetinaNet(nn.Module):
     def __init__(
         self,
-        base: Type[nn.Module],
-        backbone: Type[nn.Module],
-        head: Type[nn.Module],
+        base: nn.Module,
+        backbone: nn.Module,
+        head: nn.Module,
         anchor_generator: AnchorBoxGenerator,
         num_classes=20,
     ):
         super().__init__()
-        self.base = base()
-        self.backbone = backbone()
-        self.head = head(num_classes)
+        self.base = base
+        self.backbone = backbone
+        self.head = head
         self.anchor_generator = anchor_generator
         self.num_classes = num_classes
 
     def forward(self, x):
-        _, C3, C4, C5 = self.base(x)
-        P3, P4, P5, P6, P7 = self.backbone(C3, C4, C5)
+        base_outputs = self.base(x)
+        C3 = base_outputs["res3"]
+        C4 = base_outputs["res4"]
+        C5 = base_outputs["res5"]
+
+        backbone_outputs = self.backbone([C3, C4, C5])
+        P3 = backbone_outputs["fpn0"]
+        P4 = backbone_outputs["fpn1"]
+        P5 = backbone_outputs["fpn2"]
+        P6 = backbone_outputs["upsample_fpn3"]
+        P7 = backbone_outputs["upsample_fpn4"]
 
         pred_logits, pred_bboxes = self.head(P3, P4, P5, P6, P7)
 
@@ -60,22 +74,26 @@ class _RetinaNet(nn.Module):
         return reshaped_logits, reshaped_bboxes, anchors
 
 
-## class RetinaNet(BaseModel):
-##     def __init__(self, num_classes: Optional[int] = 80):
-##         super().__init__()
-##
-##         sizes = [32.0, 64.0, 128.0, 256.0, 512.0]
-##         aspect_ratios = [0.5, 1.0, 2.0]
-##         scales = [1.0, 2 ** (1 / 3), 2 ** (2 / 3)]
-##         strides = [2, 2, 2, 2, 2]
-##
-##         self.base = ResNet50()
-##         self.backbone = RetinaNetFPN50()
-##         self.head = RetinaNetHead(num_classes)
-##         self.anchors = AnchorBoxGenerator(sizes, aspect_ratios, strides, scales)
-##
-##     def forward(self, x):
-##         _, C3, C4, C5 = self.base(x)
-##         P3, P4, P5, P6, P7 = self.backbone(C3, C4, C5)
-##
-##         return self.head(P3, P4, P5, P6, P7)
+def retina_resnet50(num_classes):
+    return _retina_resnet(resnet50, num_classes)
+
+
+def retina_resnet101(num_classes):
+    return _retina_resnet(resnet101, num_classes)
+
+
+def retina_resnet152(num_classes):
+    return _retina_resnet(resnet152, num_classes)
+
+
+def _retina_resnet(resnet_func: Callable[..., nn.Module], num_classes):
+    base = resnet_func(["res3", "res4", "res5"], pretrained=True)
+    backbone = retinanet_fpn_resnet()
+    head = RetinaNetHead(num_classes=num_classes)
+    anchor_gen = AnchorBoxGenerator(
+        sizes=[32.0, 64.0, 128.0, 256.0, 512.0],
+        aspect_ratios=[0.5, 1.0, 2.0],
+        scales=[1.0, 2 ** (1 / 3), 2 ** (2 / 3)],
+        strides=[2, 2, 2, 2, 2],
+    )
+    return _RetinaNet(base, backbone, head, anchor_gen, num_classes)
