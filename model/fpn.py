@@ -36,73 +36,87 @@ class FPN(nn.Module):
             in DESC order (from high level feature to lower level feature).
         """
         super().__init__()
+        self._num_us = len(upsample_stages)
+        self._num_ds = len(downsample_stages)
+        self.out_features = 256
 
+        self._make_upsample_stages(upsample_stages)
+        self._make_downsample_stages(downsample_stages)
+
+        self.relu = nn.ReLU(inplace=True)
+
+    def _make_upsample_stages(self, upsample_stages):
+        total_stages = self._num_us + self._num_ds
+        up_start = total_stages - self._num_us
         self.upsample_stage_names, self.upsample_stages = [], []
 
-        total_stages = len(upsample_stages) + len(downsample_stages)
-        up_start = total_stages - len(upsample_stages)
-        ## pdb.set_trace()
-        count = 0
-        for _, in_channels in enumerate(upsample_stages):
-            stage = conv3x3(in_channels, out_features, stride=2)
-            stage_name = "upsample_fpn" + str(up_start + count)
+        for i, in_channels in enumerate(upsample_stages):
+            stage = conv3x3(in_channels, self.out_features, stride=2)
+            stage_name = "upsample_fpn" + str(up_start + i)
+
             self.add_module(stage_name, stage)
             self.upsample_stages.append(stage)
             self.upsample_stage_names.append(stage_name)
-            count += 1
 
+    def _make_downsample_stages(self, downsample_stages):
+        total_stages = self._num_us + self._num_ds
+        up_start = total_stages - self._num_us
         self.stage_names, self.stages, self.lat_stages = [], [], []
-        count = 1
+
         for i, in_channels in enumerate(downsample_stages):
             if i == 0:
-                lat_stage = conv1x1(in_channels, out_features)
+                lat_stage = conv1x1(in_channels, self.out_features)
             else:
-                lat_stage = LateralUpsampleMerge(in_channels, out_features)
-            conv_stage = conv3x3(out_features, out_features)
-            stage_name = "fpn" + str(up_start - count)
-            lat_name = "lat" + str(up_start - count)
+                lat_stage = LateralUpsampleMerge(in_channels, self.out_features)
+
+            conv_stage = conv3x3(self.out_features, self.out_features)
+            stage_name = "fpn" + str(up_start - (i + 1))
+            lat_name = "lat" + str(up_start - (i + 1))
 
             self.add_module(lat_name, lat_stage)
             self.add_module(stage_name, conv_stage)
             self.lat_stages.append(lat_stage)
             self.stages.append(conv_stage)
             self.stage_names.append(stage_name)
-            count += 1
-
-        self.relu = nn.ReLU(inplace=True)
 
     def forward(self, inputs: List[Tensor]):
         assert len(inputs) == len(self.stages)
-        ## pdb.set_trace()
 
+        us_outputs = self._forward_upsampling_stages(inputs)
+        ds_outputs = self._forward_downsampling_stages(inputs)
+
+        return {**us_outputs, **ds_outputs}
+
+    def _forward_upsampling_stages(self, inputs: List[Tensor]):
         outputs = {}
-
-        inp_idxs = list(range(len(inputs) - 1, -1, -1))
 
         # Do upsampling.
         out = inputs[-1]
-        upsample_idxs = list(range(len(self.upsample_stages) - 1, -1, -1))
+        upsample_idxs = list(range(self._num_us))
         for i, name, stage in zip(
             upsample_idxs, self.upsample_stage_names, self.upsample_stages
         ):
-            if i == len(self.upsample_stages) - 1:
+            if i == 0:
                 out = stage(out)
                 outputs[name] = out
             else:
                 out = stage(self.relu(out))
                 outputs[name] = out
+        return outputs
+
+    def _forward_downsampling_stages(self, inputs: List[Tensor]):
+        outputs = {}
 
         # Do downsampling.
-        count = 0
+        out = inputs[-1]
+        rev_inp_idxs = list(range(len(inputs) - 1, -1, -1))
         for i, name, stage, lat_stage in zip(
-            inp_idxs, self.stage_names, self.stages, self.lat_stages
+            rev_inp_idxs, self.stage_names, self.stages, self.lat_stages
         ):
-            if count == 0:
+            if i == rev_inp_idxs[0]:
                 lat_out = lat_stage(inputs[i])
             else:
                 lat_out = lat_stage(out, inputs[i])
             out = stage(lat_out)
             outputs[name] = out
-            count += 1
-
         return outputs
