@@ -7,6 +7,9 @@ import torch.nn as nn
 def conv3x3(
     in_channels: int, out_channels: int, stride: Optional[int] = 1, use_bias=True
 ):
+    """
+    Canonical 3 by 3 "Same" convolutional layer.
+    """
     return nn.Conv2d(
         in_channels,
         out_channels,
@@ -18,7 +21,12 @@ def conv3x3(
 
 
 def conv1x1(in_channels: int, out_channels, stride=1, use_bias=True):
-    return nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=use_bias)
+    """
+    Canonical 1 by 1 "Bottleneck" convolutional layer.
+    """
+    return nn.Conv2d(
+        in_channels, out_channels, kernel_size=1, stride=stride, bias=use_bias
+    )
 
 
 def half_max_pool2d():

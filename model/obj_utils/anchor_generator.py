@@ -32,26 +32,52 @@ def _broadcast_params(params: Union[List[float], Tuple[float]], num_features: in
 
 
 class AnchorBoxGenerator(nn.Module):
+    """
+    Compute anchors in the standard way described in
+    "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks"
+    paper.
+    """
+
     def __init__(
         self,
-        sizes: List[float],
-        aspect_ratios: List[float],
-        strides: List[int],
-        scales: Optional[List[float]] = [1.0],
-        offset: Optional[float] = 0.5,
+        sizes: Optional[Union[List[List[float]], List[float]]] = None,
+        aspect_ratios: Optional[Union[List[List[float]], List[float]]] = None,
+        scales: Optional[Union[List[List[float]], List[float]]] = None,
+        strides: Optional[List[int]] = None,
+        pyramid_levels=[3, 4, 5, 6, 7],
+        offset: float = 0.5,
     ):
         """
-        Compute anchors in the standard way described in
-        "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks"
-        paper.
+        Args:
+            sizes: If sizes is a list[list[float]], sizes[i] is the list of anchor
+                sizes. (i.e. sqrt of anchor area) to use for the i-th feature map.
+                If sizes is list[float], the sizes are used for all feature maps.
+                Anchor sizes are given in absolute lengths in units of the input image; they do not dynamically scale if the input image size changes.
+            aspect_ratios: list of aspect ratios (i.e. height / width) to use for
+                anchors. Same "broadcast" rule for `sizes` applies.
+            strides: stride of each input feature.
+            offset: Relative offset between the center of the first anchor and
+                the top-left corner of the image. Value has to be in [0, 1).
+                Recommend to use 0.5, which means half stride.
         """
         super().__init__()
 
-        self.strides = strides
+        if strides is None:
+            self.strides = [2 ** x for x in pyramid_levels]
+        else:
+            self.strides = strides
+
+        if scales is None:
+            scales = [2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)]
+
+        if sizes is None:
+            sizes = [2 ** (x + 2) for x in pyramid_levels]
+            sizes = [[size * scale for scale in scales] for size in sizes]
+        if aspect_ratios is None:
+            aspect_ratios = [0.5, 1.0, 2.0]
+
         self.num_features = len(self.strides)
-        sizes = _broadcast_params(
-            [[size * scale for scale in scales] for size in sizes], self.num_features
-        )
+        sizes = _broadcast_params(sizes, self.num_features)
         aspect_ratios = _broadcast_params(aspect_ratios, self.num_features)
         self.cell_anchors = self._calculate_anchors(sizes, aspect_ratios)
 
@@ -65,9 +91,8 @@ class AnchorBoxGenerator(nn.Module):
         ]
         return BufferList(cell_anchors)
 
-    def generate_anchor_boxes(
-        self, sizes=(32, 128, 256, 512), aspect_ratios=(0.5, 1, 2)
-    ):
+    @staticmethod
+    def generate_anchor_boxes(sizes=(32, 128, 256, 512), aspect_ratios=(0.5, 1, 2)):
         """
         Generate a tensor storing canonical anchor boxes of different
         sizes and aspect ratios centered at (0, 0).
@@ -106,6 +131,8 @@ class AnchorBoxGenerator(nn.Module):
 
     def _grid_anchors(self, grid_sizes: List[List[int]]):
         """
+        Shift canonical anchors to build a grid of anchor boxes.
+
         Returns:
             list[Tensor]: #feature map tensors of shape (locs x cell_anchors) * 4
         """
@@ -124,8 +151,9 @@ class AnchorBoxGenerator(nn.Module):
 
         return anchors
 
+    @staticmethod
     def _create_grid_offsets(
-        self, size: List[int], stride: int, offset: float, device: torch.device
+        size: List[int], stride: int, offset: float, device: torch.device
     ):
         grid_height, grid_width = size
         shifts_x = torch.arange(

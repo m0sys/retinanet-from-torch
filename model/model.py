@@ -3,9 +3,9 @@ import torch.nn as nn
 
 from base import BaseModel
 from model.backbone.resnet import resnet50, resnet101, resnet152
-from model.backbone.retina_meta import RetinaNetFPN50, RetinaNetHead
+from model.backbone.retina_meta import RetinaNetHead
 from model.backbone.fpn import retinanet_fpn_resnet
-from model.anchor_generator import AnchorBoxGenerator
+from model.obj_utils.anchor_generator import AnchorBoxGenerator
 from utils.shape_utils import permute_to_N_HWA_K
 
 
@@ -13,10 +13,12 @@ class RetinaNet500(BaseModel):
     def __init__(self, num_classes: Optional[int] = 80):
         super().__init__()
 
+        sizes = [32.0, 64.0, 128.0, 256.0, 512.0]
+        scales = [1.0, 2 ** (1 / 3), 2 ** (2 / 3)]
+        sizes = [[size * scale for scale in scales] for size in sizes]
         anchor_gen = AnchorBoxGenerator(
-            sizes=[32.0, 64.0, 128.0, 256.0, 512.0],
+            sizes=sizes,
             aspect_ratios=[0.5, 1.0, 2.0],
-            scales=[1.0, 2 ** (1 / 3), 2 ** (2 / 3)],
             strides=[2, 2, 2, 2, 2],
         )
 
@@ -39,7 +41,7 @@ class _RetinaNet(nn.Module):
         backbone: nn.Module,
         head: nn.Module,
         anchor_generator: AnchorBoxGenerator,
-        num_classes=20,
+        num_classes=80,
     ):
         super().__init__()
         self.base = base
@@ -71,7 +73,13 @@ class _RetinaNet(nn.Module):
 
         reshaped_bboxes = [permute_to_N_HWA_K(pred_bboxes[k], 4) for k in pred_bboxes]
 
-        return reshaped_logits, reshaped_bboxes, anchors
+        outputs = {
+            "pred_logits": reshaped_logits,
+            "pred_bboxes": reshaped_bboxes,
+            "anchors": anchors,
+        }
+
+        return outputs
 
 
 def retina_resnet50(num_classes):
@@ -90,10 +98,5 @@ def _retina_resnet(resnet_func: Callable[..., nn.Module], num_classes):
     base = resnet_func(["res3", "res4", "res5"], pretrained=True)
     backbone = retinanet_fpn_resnet()
     head = RetinaNetHead(num_classes=num_classes)
-    anchor_gen = AnchorBoxGenerator(
-        sizes=[32.0, 64.0, 128.0, 256.0, 512.0],
-        aspect_ratios=[0.5, 1.0, 2.0],
-        scales=[1.0, 2 ** (1 / 3), 2 ** (2 / 3)],
-        strides=[2, 2, 2, 2, 2],
-    )
+    anchor_gen = AnchorBoxGenerator()
     return _RetinaNet(base, backbone, head, anchor_gen, num_classes)

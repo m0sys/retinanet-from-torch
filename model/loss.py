@@ -1,10 +1,11 @@
+## import pdb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-from model.matcher import Matcher
-from model.box_regression import Box2BoxTransform
+from model.obj_utils.matcher import Matcher
+from model.obj_utils.box_regression import Box2BoxTransform
 from utils.box_utils import pairwise_iou, cat_boxes
 
 
@@ -21,7 +22,9 @@ class RetinaLoss(nn.Module):
         max_detection_per_image=100,
     ):
         super().__init__()
-        self.anchor_matcher = Matcher([0.4, 0.5], [-1, 0, 1])
+        self.anchor_matcher = Matcher(
+            [0.4, 0.5], [-1, 0, 1], allow_low_quality_matches=True
+        )
         self.box2box_transform = Box2BoxTransform([1.0, 1.0, 1.0, 1.0])
         self.num_classes = num_classes
 
@@ -47,12 +50,20 @@ class RetinaLoss(nn.Module):
         )
         self.loss_normalizer_momentum = 0.9
 
-    def forward(self, pred_logits, pred_anchor_deltas, anchors, boxes, labels):
+    def forward(self, outputs, boxes, labels):
+        pred_logits = outputs["pred_logits"]
+        pred_anchor_deltas = outputs["pred_bboxes"]
+        anchors = outputs["anchors"]
+
         gt_labels, gt_boxes = self.label_anchors(anchors, boxes, labels)
         losses = self.losses(
             anchors, pred_logits, gt_labels, pred_anchor_deltas, gt_boxes
         )
-        return losses
+        loss_cls = losses["loss_cls"]
+        loss_box_reg = losses["loss_box_reg"]
+
+        print(f"Loss CLS: {loss_cls}, Loss reg: {loss_box_reg}")
+        return loss_cls / self.loss_normalizer + loss_box_reg / self.loss_normalizer
 
     def label_anchors(self, anchors, boxes, labels):
         anchors = cat_boxes(anchors)
@@ -61,10 +72,8 @@ class RetinaLoss(nn.Module):
         bs = len(boxes)
 
         for i in range(bs):
-            ## pdb.set_trace()
             matched_quality_matrix = pairwise_iou(boxes[i], anchors)
             matched_idxs, anchor_labels = self.anchor_matcher(matched_quality_matrix)
-            ## pdb.set_trace()
             del matched_quality_matrix
 
             if len(boxes[i]) > 0:
@@ -147,6 +156,9 @@ class RetinaLoss(nn.Module):
 def sigmoid_focal_loss(
     inputs: torch.Tensor, targets: torch.Tensor, gamma=2, alpha=0.25, reduction="none"
 ) -> torch.Tensor:
+    """
+    Implementation of the Focal Loss as defined in the RetinaNet paper.
+    """
     p = torch.sigmoid(inputs)
     ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
     p_t = p * targets + (1 - p) * (1 - targets)

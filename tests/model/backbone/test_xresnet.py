@@ -16,7 +16,9 @@ def init_512x512_dummy_data():
     return torch.randn((BATCH_SIZE, 3, 512, 512))
 
 
-def test_xresnet_with_50_layers_224_image_wo_classification(init_224x224_dummy_data):
+def test_xresnet_with_50_layers_224_image_wo_classification_shapes(
+    init_224x224_dummy_data,
+):
     data = init_224x224_dummy_data
 
     model = xresnet50(out_features=["res2", "res3", "res4", "res5"])
@@ -31,7 +33,9 @@ def test_xresnet_with_50_layers_224_image_wo_classification(init_224x224_dummy_d
     assert len(model.state_dict().items()) == 330
 
 
-def test_xresnet_with_101_layers_224_image_wo_classification(init_224x224_dummy_data):
+def test_xresnet_with_101_layers_224_image_wo_classification_shapes(
+    init_224x224_dummy_data,
+):
     data = init_224x224_dummy_data
 
     model = xresnet101(out_features=["res2", "res3", "res4", "res5"])
@@ -46,7 +50,9 @@ def test_xresnet_with_101_layers_224_image_wo_classification(init_224x224_dummy_
     assert len(model.state_dict().items()) == 636
 
 
-def test_xresnet_with_152_layers_224_image_wo_classification(init_224x224_dummy_data):
+def test_xresnet_with_152_layers_224_image_wo_classification_shapes(
+    init_224x224_dummy_data,
+):
     data = init_224x224_dummy_data
 
     model = xresnet152(out_features=["res2", "res3", "res4", "res5"])
@@ -61,7 +67,7 @@ def test_xresnet_with_152_layers_224_image_wo_classification(init_224x224_dummy_
     assert len(model.state_dict().items()) == 942
 
 
-def test_xresnet_with_50_layers_224_image_wo_classification_w_dropout(
+def test_xresnet_with_50_layers_224_image_wo_classification_w_dropout_shapes(
     init_224x224_dummy_data,
 ):
     data = init_224x224_dummy_data
@@ -78,7 +84,7 @@ def test_xresnet_with_50_layers_224_image_wo_classification_w_dropout(
     assert len(model.state_dict().items()) == 330
 
 
-def test_xresnet_with_101_layers_224_image_wo_classification_w_dropout(
+def test_xresnet_with_101_layers_224_image_wo_classification_w_dropout_shapes(
     init_224x224_dummy_data,
 ):
     data = init_224x224_dummy_data
@@ -95,7 +101,7 @@ def test_xresnet_with_101_layers_224_image_wo_classification_w_dropout(
     assert len(model.state_dict().items()) == 636
 
 
-def test_xresnet_with_152_layers_224_image_wo_classification_w_dropout(
+def test_xresnet_with_152_layers_224_image_wo_classification_w_dropout_shapes(
     init_224x224_dummy_data,
 ):
     data = init_224x224_dummy_data
@@ -112,7 +118,9 @@ def test_xresnet_with_152_layers_224_image_wo_classification_w_dropout(
     assert len(model.state_dict().items()) == 942
 
 
-def test_xresnet_with_50_layers_224_image_w_classification(init_224x224_dummy_data):
+def test_xresnet_with_50_layers_224_image_w_classification_shapes(
+    init_224x224_dummy_data,
+):
     data = init_224x224_dummy_data
 
     model = xresnet50(out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
@@ -127,7 +135,9 @@ def test_xresnet_with_50_layers_224_image_w_classification(init_224x224_dummy_da
     assert len(model.state_dict().items()) == 332
 
 
-def test_xresnet_with_101_layers_224_image_w_classification(init_224x224_dummy_data):
+def test_xresnet_with_101_layers_224_image_w_classification_shapes(
+    init_224x224_dummy_data,
+):
     data = init_224x224_dummy_data
 
     model = xresnet101(out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
@@ -142,7 +152,9 @@ def test_xresnet_with_101_layers_224_image_w_classification(init_224x224_dummy_d
     assert len(model.state_dict().items()) == 638
 
 
-def test_xresnet_with_152_layers_224_image_w_classification(init_224x224_dummy_data):
+def test_xresnet_with_152_layers_224_image_w_classification_shapes(
+    init_224x224_dummy_data,
+):
     data = init_224x224_dummy_data
 
     model = xresnet152(out_features=["res2", "res3", "res4", "res5"], num_classes=1000)
@@ -157,7 +169,7 @@ def test_xresnet_with_152_layers_224_image_w_classification(init_224x224_dummy_d
     assert len(model.state_dict().items()) == 944
 
 
-def test_xresnet_with_50_layers_224_image_w_classification_and_dropout(
+def test_xresnet_with_50_layers_224_image_w_classification_and_dropout_shapes(
     init_224x224_dummy_data,
 ):
     data = init_224x224_dummy_data
@@ -178,7 +190,7 @@ def test_xresnet_with_50_layers_224_image_w_classification_and_dropout(
     assert len(model.state_dict().items()) == 332
 
 
-def test_xresnet_with_101_layers_224_image_w_classification_and_dropout(
+def test_xresnet_with_101_layers_224_image_w_classification_and_dropout_shapes(
     init_224x224_dummy_data,
 ):
     data = init_224x224_dummy_data
@@ -199,7 +211,7 @@ def test_xresnet_with_101_layers_224_image_w_classification_and_dropout(
     assert len(model.state_dict().items()) == 638
 
 
-def test_xresnet_with_152_layers_224_image_w_classification_and_dropout(
+def test_xresnet_with_152_layers_224_image_w_classification_and_dropout_shapes(
     init_224x224_dummy_data,
 ):
     data = init_224x224_dummy_data

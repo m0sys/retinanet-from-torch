@@ -14,15 +14,15 @@ def init_512x512_dummy_data():
 
 def test_bare_fpn(init_512x512_dummy_data):
     data = init_512x512_dummy_data
-    backbone = resnet50(out_features=["res3", "res4", "res5"])
-    model = FPN(upsample_stages=[2048, 256], downsample_stages=[2048, 1024, 512])
+    base = resnet50(out_features=["res3", "res4", "res5"])
+    backbone = FPN(upsample_stages=[2048, 256], downsample_stages=[2048, 1024, 512])
 
-    outputs = backbone(data)
+    outputs = base(data)
     C3 = outputs["res3"]
     C4 = outputs["res4"]
     C5 = outputs["res5"]
 
-    outputs = model([C3, C4, C5])
+    outputs = backbone([C3, C4, C5])
     P3 = outputs["fpn0"]
     P4 = outputs["fpn1"]
     P5 = outputs["fpn2"]
@@ -38,15 +38,15 @@ def test_bare_fpn(init_512x512_dummy_data):
 
 def test_retina_fpn_resnet(init_512x512_dummy_data):
     data = init_512x512_dummy_data
-    backbone = resnet50(out_features=["res3", "res4", "res5"])
-    model = retinanet_fpn_resnet()
+    base = resnet50(out_features=["res3", "res4", "res5"])
+    backbone = retinanet_fpn_resnet()
 
-    outputs = backbone(data)
+    outputs = base(data)
     C3 = outputs["res3"]
     C4 = outputs["res4"]
     C5 = outputs["res5"]
 
-    outputs = model([C3, C4, C5])
+    outputs = backbone([C3, C4, C5])
     P3 = outputs["fpn0"]
     P4 = outputs["fpn1"]
     P5 = outputs["fpn2"]

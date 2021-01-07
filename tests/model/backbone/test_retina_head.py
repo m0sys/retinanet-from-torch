@@ -2,7 +2,8 @@ import pytest
 import torch
 
 from model.backbone.resnet import resnet50
-from model.backbone.retina_meta import RetinaNetFPN50, RetinaNetHead
+from model.backbone.retina_meta import RetinaNetHead
+from model.backbone.fpn import retinanet_fpn_resnet
 from utils.shape_utils import permute_to_N_HWA_K
 
 
@@ -14,23 +15,27 @@ def init_512x512_dummy_data():
     return torch.randn((BATCH_SIZE, 3, 512, 512))
 
 
-def test_retina_head(init_512x512_dummy_data):
+def test_retina_head_output_shapes(init_512x512_dummy_data):
     data = init_512x512_dummy_data
     num_anchors = 9
     num_classes = 20
 
-    backbone = resnet50(out_features=["res3", "res4", "res5"])
-    model = RetinaNetFPN50()
+    base = resnet50(out_features=["res3", "res4", "res5"])
+    backbone = retinanet_fpn_resnet()
     head = RetinaNetHead(20)
 
-    outputs = backbone(data)
+    outputs = base(data)
     C3 = outputs["res3"]
     C4 = outputs["res4"]
     C5 = outputs["res5"]
 
-    del data
-    P3, P4, P5, P6, P7 = model(C3, C4, C5)
-    del C3, C4, C5
+    b_outs = backbone([C3, C4, C5])
+    P3 = b_outs["fpn0"]
+    P4 = b_outs["fpn1"]
+    P5 = b_outs["fpn2"]
+    P6 = b_outs["upsample_fpn3"]
+    P7 = b_outs["upsample_fpn4"]
+
     pred_logits, pred_bboxes = head(P3, P4, P5, P6, P7)
 
     assert pred_logits["p3"].shape == (BATCH_SIZE, num_classes * num_anchors, 64, 64)
@@ -51,17 +56,22 @@ def test_reshape_retina_head_into_N_KWA_K(init_512x512_dummy_data):
     num_anchors = 9
     num_classes = 20
 
-    backbone = resnet50(out_features=["res3", "res4", "res5"])
-    model = RetinaNetFPN50()
-    head = RetinaNetHead(num_classes)
+    base = resnet50(out_features=["res3", "res4", "res5"])
+    backbone = retinanet_fpn_resnet()
+    head = RetinaNetHead(20)
 
-    outputs = backbone(data)
+    outputs = base(data)
     C3 = outputs["res3"]
     C4 = outputs["res4"]
     C5 = outputs["res5"]
-    del data
-    P3, P4, P5, P6, P7 = model(C3, C4, C5)
-    del C3, C4, C5
+
+    b_outs = backbone([C3, C4, C5])
+    P3 = b_outs["fpn0"]
+    P4 = b_outs["fpn1"]
+    P5 = b_outs["fpn2"]
+    P6 = b_outs["upsample_fpn3"]
+    P7 = b_outs["upsample_fpn4"]
+
     pred_logits, pred_bboxes = head(P3, P4, P5, P6, P7)
 
     reshaped_logits = [

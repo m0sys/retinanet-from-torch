@@ -49,6 +49,8 @@ class Box2BoxTransform:
         assert isinstance(src_boxes, torch.Tensor), type(src_boxes)
         assert isinstance(target_boxes, torch.Tensor), type(target_boxes)
 
+        # See section 3.12. Loss Function in Faster-RCNN paper for
+        # more details.
         src_widths = src_boxes[:, 2] - src_boxes[:, 0]
         src_heights = src_boxes[:, 3] - src_boxes[:, 1]
         src_ctr_x = src_boxes[:, 0] + 0.5 * src_widths
@@ -111,3 +113,4 @@ class Box2BoxTransform:
         pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
         pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w
         pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h
+        return pred_boxes

@@ -40,6 +40,18 @@ def init_c2msr_fill(m):
         init_c2msr_fill(l)
 
 
+def init_c2xaiver_fill(m):
+    """Initializes Conv layer weights using Xaiver Init."""
+    if getattr(m, "bias", None) is not None:
+        nn.init.constant_(m.bias, 0)
+
+    if isinstance(m, (nn.Conv2d)):
+        c2_xavier_fill(m)  # detectron init
+
+    for l in m.children():
+        init_c2xaiver_fill(l)
+
+
 def init_cnn(m):
     """
     FastAI XResNet Init.
@@ -52,6 +64,7 @@ def init_cnn(m):
         nn.init.kaiming_normal_(m.weight)
     for l in m.children():
         init_cnn(l)
+
 
 def init_bn(m):
     """

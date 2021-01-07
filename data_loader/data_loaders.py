@@ -119,7 +119,7 @@ def load_sample_coco_dls(img_size=512, bs=32):
         lambda o: img2bbox[o][1],
     ]
     item_tfms = [
-        Resize(512, method="pad"),
+        Resize(img_size, method="pad"),
     ]
     batch_tfms = [Flip(), Normalize.from_stats(*imagenet_stats)]
     sample_coco = DataBlock(
@@ -131,4 +131,4 @@ def load_sample_coco_dls(img_size=512, bs=32):
         batch_tfms=batch_tfms,
         n_inp=1,
     )
-    return sample_coco.dataloaders(path / "train_sample")
+    return sample_coco.dataloaders(path / "train_sample", bs=bs)
