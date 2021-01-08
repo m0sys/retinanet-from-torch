@@ -9,7 +9,7 @@ from torch import Tensor
 
 from layers.upsample import LateralUpsampleMerge
 from layers.wrappers import conv1x1, conv3x3
-from utils.weight_init import init_cnn
+from utils.weight_init import init_c2xaiver_fill
 
 
 class FPN(nn.Module):
@@ -49,7 +49,6 @@ class FPN(nn.Module):
             self.out_feature_names = u_feat_names + d_feat_names
 
         self.relu = nn.ReLU(inplace=True)
-        init_cnn(self)
 
     def _make_upsample_stages(self, upsample_stages):
         out_feat_names = []
@@ -65,6 +64,9 @@ class FPN(nn.Module):
             self.upsample_stages.append(stage)
             self.upsample_stage_names.append(stage_name)
             out_feat_names.append(stage_name)
+
+            # Initialization.
+            init_c2xaiver_fill(stage)
         return out_feat_names
 
     def _make_downsample_stages(self, downsample_stages):
@@ -89,6 +91,10 @@ class FPN(nn.Module):
             self.stages.append(conv_stage)
             self.stage_names.append(stage_name)
             out_feat_names.append(stage_name)
+            # Initialization.
+            init_c2xaiver_fill(conv_stage)
+            init_c2xaiver_fill(lat_stage)
+
         return out_feat_names
 
     def forward(self, inputs: List[Tensor]):

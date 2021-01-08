@@ -1,37 +1,11 @@
-from typing import Optional, Callable
+from typing import Callable
 import torch.nn as nn
 
-from base import BaseModel
 from model.backbone.resnet import resnet50, resnet101, resnet152
 from model.backbone.retina_meta import RetinaNetHead
 from model.backbone.fpn import retinanet_fpn_resnet
 from model.obj_utils.anchor_generator import AnchorBoxGenerator
 from utils.shape_utils import permute_to_N_HWA_K
-
-
-class RetinaNet500(BaseModel):
-    def __init__(self, num_classes: Optional[int] = 80):
-        super().__init__()
-
-        sizes = [32.0, 64.0, 128.0, 256.0, 512.0]
-        scales = [1.0, 2 ** (1 / 3), 2 ** (2 / 3)]
-        sizes = [[size * scale for scale in scales] for size in sizes]
-        anchor_gen = AnchorBoxGenerator(
-            sizes=sizes,
-            aspect_ratios=[0.5, 1.0, 2.0],
-            strides=[2, 2, 2, 2, 2],
-        )
-
-        self.model = _RetinaNet(
-            resnet50(),
-            retinanet_fpn_resnet(),
-            RetinaNetHead(),
-            anchor_gen,
-            num_classes=num_classes,
-        )
-
-    def forward(self, x):
-        return self.model(x)
 
 
 class _RetinaNet(nn.Module):

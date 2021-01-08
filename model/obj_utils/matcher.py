@@ -1,3 +1,4 @@
+import pdb
 from typing import List
 import torch
 from torch import Tensor
@@ -71,6 +72,7 @@ class Matcher:
         """
         assert match_quality_matrix.dim() == 2
         if match_quality_matrix.numel() == 0:
+            pdb.set_trace(header="matcher.py -> __call__: match qual is numel!")
             default_matches = match_quality_matrix.new_full(
                 (match_quality_matrix.size(1),), 0, dtype=torch.int64
             )

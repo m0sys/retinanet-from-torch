@@ -6,7 +6,6 @@ with Convolutional Neural Networks" @ https://arxiv.org/abs/1812.01187
 """
 
 import torch.nn as nn
-import torch.nn.functional as F
 from layers.wrappers import conv1x1, conv3x3, half_max_pool2d
 from layers.resnet_blocks import BottleneckBlock
 
@@ -50,6 +49,7 @@ class FastStem(nn.Module):
         self.bn1_2 = nn.BatchNorm2d(out_channels // 2)
         self.bn1_3 = nn.BatchNorm2d(out_channels)
         self.pool1 = half_max_pool2d()
+        self.relu = nn.LeakyReLU(inplace=True)
 
         if use_dropout:
             self.dropout = nn.Dropout2d()
@@ -63,13 +63,13 @@ class FastStem(nn.Module):
             return x
 
     def forward(self, x):
-        out = F.relu(self.bn1_1(self.conv1_1(x)))
+        out = self.relu(self.bn1_1(self.conv1_1(x)))
         out = self._apply_dropout(out)
 
-        out = F.relu(self.bn1_2(self.conv1_2(out)))
+        out = self.relu(self.bn1_2(self.conv1_2(out)))
         out = self._apply_dropout(out)
 
-        out = F.relu(self.bn1_3(self.conv1_3(out)))
+        out = self.relu(self.bn1_3(self.conv1_3(out)))
         out = self._apply_dropout(out)
 
         return self.pool1(out)

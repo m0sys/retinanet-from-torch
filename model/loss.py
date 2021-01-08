@@ -1,4 +1,5 @@
 ## import pdb
+from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,7 +7,7 @@ import torch.nn.functional as F
 
 from model.obj_utils.matcher import Matcher
 from model.obj_utils.box_regression import Box2BoxTransform
-from utils.box_utils import pairwise_iou, cat_boxes
+from utils.box_utils import pairwise_iou, cat_boxes, remove_zero_area_bboxes
 
 
 class RetinaLoss(nn.Module):
@@ -20,10 +21,11 @@ class RetinaLoss(nn.Module):
         test_topk_candidates=1000,
         test_nms_thresh=0.5,
         max_detection_per_image=100,
+        allow_low_quality_matches=False,
     ):
         super().__init__()
         self.anchor_matcher = Matcher(
-            [0.4, 0.5], [-1, 0, 1], allow_low_quality_matches=True
+            [0.4, 0.5], [-1, 0, 1], allow_low_quality_matches=allow_low_quality_matches
         )
         self.box2box_transform = Box2BoxTransform([1.0, 1.0, 1.0, 1.0])
         self.num_classes = num_classes
@@ -50,10 +52,16 @@ class RetinaLoss(nn.Module):
         )
         self.loss_normalizer_momentum = 0.9
 
-    def forward(self, outputs, boxes, labels):
+    def forward(self, outputs, boxes: List[torch.Tensor], labels: List[torch.Tensor]):
         pred_logits = outputs["pred_logits"]
         pred_anchor_deltas = outputs["pred_bboxes"]
         anchors = outputs["anchors"]
+        bs = len(boxes)
+        boxes, labels = remove_zero_area_bboxes(bs, boxes, labels)
+
+        ## pdb.set_trace(
+        ##     header="loss.py -> RetinaLoss -> forward method -> after unwrapping outputs."
+        ## )
 
         gt_labels, gt_boxes = self.label_anchors(anchors, boxes, labels)
         losses = self.losses(
@@ -62,19 +70,29 @@ class RetinaLoss(nn.Module):
         loss_cls = losses["loss_cls"]
         loss_box_reg = losses["loss_box_reg"]
 
-        print(f"Loss CLS: {loss_cls}, Loss reg: {loss_box_reg}")
+        ## print(f"Loss CLS: {loss_cls}, Loss reg: {loss_box_reg}")
         return loss_cls / self.loss_normalizer + loss_box_reg / self.loss_normalizer
 
-    def label_anchors(self, anchors, boxes, labels):
+    def label_anchors(
+        self, anchors, boxes: List[torch.Tensor], labels: List[torch.Tensor]
+    ):
+        # Note! bboxes and labels have to be lists not tensors in order for
+        # this function to work as expected.
+
         anchors = cat_boxes(anchors)
         gt_labels = []
         matched_gt_boxes = []
         bs = len(boxes)
+        ## pdb.set_trace(header=f"loss.py -> RetinaLoss -> label_anchors meth: start.")
 
+        # TODO: How can I avoid this bs loop?
         for i in range(bs):
             matched_quality_matrix = pairwise_iou(boxes[i], anchors)
             matched_idxs, anchor_labels = self.anchor_matcher(matched_quality_matrix)
             del matched_quality_matrix
+            ## pdb.set_trace(
+            ##     header=f"loss.py -> RetinaLoss -> label_anchors meth: {i}th batch after applying matcher."
+            ## )
 
             if len(boxes[i]) > 0:
                 matched_gt_boxes_i = boxes[i][matched_idxs]
@@ -112,7 +130,7 @@ class RetinaLoss(nn.Module):
                 training only. The dict keys are: "loss_cls" and "loss_box_reg".
         """
 
-        num_images = len(gt_labels)
+        ## num_images = len(gt_labels)
         gt_labels = torch.stack(gt_labels).squeeze(-1)  # (N, R)
         anchors = cat_boxes(anchors)
         gt_anchor_deltas = [
@@ -147,6 +165,9 @@ class RetinaLoss(nn.Module):
             beta=self.smooth_l1_beta,
             reduction="sum",
         )
+        ## pdb.set_trace(
+        ##     header="loss.py -> RetinaLoss -> losses meth: just before return!"
+        ## )
         return {
             "loss_cls": loss_cls / self.loss_normalizer,
             "loss_box_reg": loss_box_reg / self.loss_normalizer,

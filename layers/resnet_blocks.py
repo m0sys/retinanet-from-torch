@@ -25,12 +25,13 @@ class StandardStem(nn.Module):
             in_channels, out_channels, kernel_size=7, stride=2, padding=3, bias=False
         )
         self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.LeakyReLU(inplace=True)
         self.maxpool = half_max_pool2d()
 
         if use_dropout:
             self.dropout = nn.Dropout2d()
-        else: self.dropout = None
+        else:
+            self.dropout = None
 
     def _apply_dropout(self, x):
         if self.use_dropout:
@@ -72,7 +73,7 @@ class BottleneckBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(bn_channels)
         self.conv3 = conv1x1(bn_channels, out_channels, use_bias=False)
         self.bn3 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.LeakyReLU(inplace=True)
 
         if self.do_downsample():
             self.downsample = shortcut_func(in_channels, out_channels, stride=stride)

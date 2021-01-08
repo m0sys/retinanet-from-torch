@@ -1,6 +1,7 @@
 """Utility functions for bounding box gymnastics."""
 
-from typing import List
+## import pdb
+from typing import List, Union
 import torch
 from torch import Tensor
 
@@ -28,8 +29,8 @@ def pairwise_iou(set_1, set_2):
     """
     intersection = pairwise_intersection(set_1, set_2)  # (n1, n2)
 
-    areas_set_1 = _find_area(set_1)  # (n1)
-    areas_set_2 = _find_area(set_2)  # (n2)
+    areas_set_1 = find_area(set_1)  # (n1)
+    areas_set_2 = find_area(set_2)  # (n2)
 
     union = (
         areas_set_1.unsqueeze(1) + areas_set_2.unsqueeze(0) - intersection
@@ -49,6 +50,7 @@ def pairwise_intersection(set_1, set_2):
         a tensor of dimensions (n1, n2)
     """
 
+    ## pdb.set_trace(header="box_utils.py -> pairwise_intersection -> beginning")
     lower_bounds = torch.max(
         set_1[:, :2].unsqueeze(1), set_2[:, :2].unsqueeze(0)
     )  # (n1, n2, 2)
@@ -59,7 +61,7 @@ def pairwise_intersection(set_1, set_2):
     return intersection_dims[:, :, 0] * intersection_dims[:, :, 1]  # (n1, n2)
 
 
-def _find_area(sset):
+def find_area(sset):
     """
     Find area of boxes that are in boundary container.
     Args:
@@ -69,3 +71,25 @@ def _find_area(sset):
     """
 
     return (sset[:, 2] - sset[:, 0]) * (sset[:, 3] - sset[:, 1])
+
+
+def remove_zero_area_bboxes(
+    bs, bboxes: Union[List[Tensor], Tensor], lbls: Union[List[Tensor], Tensor]
+):
+    """
+    Remove any bboxes in a given batch if the area is zero.
+
+    This helps training by avoiding the accidental inclusion of bboxes that
+    have zero area which can cause the loss to become unstable.
+
+    See https://github.com/jwyang/faster-rcnn.pytorch/issues/136#issuecomment-390544655
+    for more details.
+    """
+    t_bboxes, t_lbls = [], []
+    # TODO: Can I avoid this bs loop?
+    for i in range(bs):
+        areas = find_area(bboxes[i])
+        area_mask = areas > 0
+        t_bboxes.append(bboxes[i][area_mask])
+        t_lbls.append(lbls[i][area_mask])
+    return t_bboxes, t_lbls

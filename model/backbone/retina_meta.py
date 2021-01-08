@@ -1,3 +1,4 @@
+import pdb
 import math
 import torch.nn as nn
 
@@ -14,6 +15,7 @@ class RetinaNetHead(nn.Module):
         self.num_classes = num_classes
         self.num_anchors = num_anchors
         self.num_channels = num_channels
+        self.relu = nn.ReLU(inplace=True)
 
         self.classifier_subnet = self._create_subnet(self.num_classes)
         self.regressor_subnet = self._create_subnet(4)
@@ -21,19 +23,21 @@ class RetinaNetHead(nn.Module):
         self.init_weights()
 
         # Apply the prior to bias to improve early training stability.
+        ## pdb.set_trace()
         bias_value = -math.log((1 - prior) / prior)
         nn.init.constant_(self.classifier_subnet[-1].bias, bias_value)
+        ## nn.init.constant_(self.regressor_subnet[-1].bias, bias_value)
 
     def _create_subnet(self, out: int):
         return nn.Sequential(
             conv3x3(self.num_channels, self.num_channels),
-            nn.ReLU(inplace=True),
+            self.relu,
             conv3x3(self.num_channels, self.num_channels),
-            nn.ReLU(inplace=True),
+            self.relu,
             conv3x3(self.num_channels, self.num_channels),
-            nn.ReLU(inplace=True),
+            self.relu,
             conv3x3(self.num_channels, self.num_channels),
-            nn.ReLU(inplace=True),
+            self.relu,
             conv3x3(self.num_channels, self.num_anchors * out),
         )
 

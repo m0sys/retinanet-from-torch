@@ -29,10 +29,11 @@ def c2_msra_fill(module: nn.Module) -> None:
 
 
 def init_c2msr_fill(m):
-    """Initializes Conv layer weights using He Init with `fan_out`."""
-    if getattr(m, "bias", None) is not None:
-        nn.init.constant_(m.bias, 0)
+    """
+    Initializes Conv layer weights using He Init with `fan_out`.
 
+    This works with Sequential moduels too.
+    """
     if isinstance(m, (nn.Conv2d)):
         c2_msra_fill(m)  # detectron init
 
@@ -41,10 +42,11 @@ def init_c2msr_fill(m):
 
 
 def init_c2xaiver_fill(m):
-    """Initializes Conv layer weights using Xaiver Init."""
-    if getattr(m, "bias", None) is not None:
-        nn.init.constant_(m.bias, 0)
+    """
+    Initializes Conv layer weights using Xaiver Init.
 
+    This works with Sequential moduels too.
+    """
     if isinstance(m, (nn.Conv2d)):
         c2_xavier_fill(m)  # detectron init
 

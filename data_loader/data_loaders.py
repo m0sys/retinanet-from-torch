@@ -1,10 +1,10 @@
-from os import get_terminal_size
+from torchvision import datasets, transforms
+from fastai.torch_basics import set_seed
 from fastai.data.block import DataBlock
 from fastai.vision.core import get_annotations
 from fastai.vision.data import BBoxBlock, BBoxLblBlock, ImageBlock
-from torchvision import datasets, transforms
 from fastai.data.external import URLs
-from fastai.data.transforms import Categorize, RandomSplitter, get_files, parent_label
+from fastai.data.transforms import Categorize, RandomSplitter, parent_label
 from fastai.vision.all import (
     imagenet_stats,
     PILImage,
@@ -109,7 +109,11 @@ def load_imagenette160_dls(image_size=224, bs=64):
     )
 
 
-def load_sample_coco_dls(img_size=512, bs=32):
+def load_sample_coco_dls(img_size=512, bs=32, seed=None):
+    # For reproducibility purposes.
+    if seed is not None:
+        set_seed(seed, True)
+
     path = untar_data(URLs.COCO_SAMPLE)
     imgs, lbl_bbox = get_annotations(path / "annotations/train_sample.json")
     img2bbox = dict(zip(imgs, lbl_bbox))
@@ -124,7 +128,7 @@ def load_sample_coco_dls(img_size=512, bs=32):
     batch_tfms = [Flip(), Normalize.from_stats(*imagenet_stats)]
     sample_coco = DataBlock(
         blocks=(ImageBlock, BBoxBlock, BBoxLblBlock),
-        splitter=RandomSplitter(),
+        splitter=RandomSplitter(seed=seed),
         get_items=lambda noop: imgs,
         getters=getters,
         item_tfms=item_tfms,

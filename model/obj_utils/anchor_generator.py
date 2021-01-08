@@ -62,6 +62,9 @@ class AnchorBoxGenerator(nn.Module):
         """
         super().__init__()
 
+        # The `None` settings are the default recommended values
+        # in the RetinaNet paper.
+
         if strides is None:
             self.strides = [2 ** x for x in pyramid_levels]
         else:
