@@ -1,18 +1,31 @@
 from torchvision import datasets, transforms
+from fastai.torch_basics import set_seed
+from fastai.data.block import DataBlock
+from fastai.vision.core import get_annotations
+from fastai.vision.data import BBoxBlock, BBoxLblBlock, ImageBlock
 from fastai.data.external import URLs
-from fastai.data.transforms import Categorize, parent_label
+from fastai.data.transforms import Categorize, RandomSplitter, parent_label
 from fastai.vision.all import (
     imagenet_stats,
     PILImage,
     URLs,
     untar_data,
     get_image_files,
+    get_annotations,
     GrandparentSplitter,
+    Pipeline,
     Datasets,
     ToTensor,
     RandomResizedCrop,
     IntToFloatTensor,
     Normalize,
+    Resize,
+    Flip,
+    DataBlock,
+    ImageBlock,
+    BBoxLblBlock,
+    BBoxBlock,
+    RandomSplitter,
 )
 
 from base import BaseDataLoader
@@ -79,3 +92,47 @@ class ImagenetteDataLoaders:
 
     def split_validation(self):
         return self.dls.valid
+
+
+def load_imagenette160_dls(image_size=224, bs=64):
+    source = untar_data(URLs.IMAGENETTE_160)
+    fnames = get_image_files(source)
+    tfm = Pipeline(
+        [parent_label, lbl_dict.__getitem__, Categorize(vocab=lbl_dict.values())]
+    )
+    splits = GrandparentSplitter(valid_name="val")(fnames)
+    dsets = Datasets(fnames, [[PILImage.create], tfm], splits=splits)
+    item_tfms = [ToTensor, RandomResizedCrop(image_size, min_scale=0.35)]
+    batch_tfms = [IntToFloatTensor, Normalize.from_stats(*imagenet_stats)]
+    return dsets.dataloaders(
+        after_item=item_tfms, after_batch=batch_tfms, bs=bs, num_workers=1
+    )
+
+
+def load_sample_coco_dls(img_size=512, bs=32, seed=None):
+    # For reproducibility purposes.
+    if seed is not None:
+        set_seed(seed, True)
+
+    path = untar_data(URLs.COCO_SAMPLE)
+    imgs, lbl_bbox = get_annotations(path / "annotations/train_sample.json")
+    img2bbox = dict(zip(imgs, lbl_bbox))
+    getters = [
+        lambda o: path / "train_sample" / o,
+        lambda o: img2bbox[o][0],
+        lambda o: img2bbox[o][1],
+    ]
+    item_tfms = [
+        Resize(img_size, method="pad"),
+    ]
+    batch_tfms = [Flip(), Normalize.from_stats(*imagenet_stats)]
+    sample_coco = DataBlock(
+        blocks=(ImageBlock, BBoxBlock, BBoxLblBlock),
+        splitter=RandomSplitter(seed=seed),
+        get_items=lambda noop: imgs,
+        getters=getters,
+        item_tfms=item_tfms,
+        batch_tfms=batch_tfms,
+        n_inp=1,
+    )
+    return sample_coco.dataloaders(path / "train_sample", bs=bs)
