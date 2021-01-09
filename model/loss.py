@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from model.obj_utils.matcher import Matcher
 from model.obj_utils.box_regression import Box2BoxTransform
-from utils.box_utils import pairwise_iou, cat_boxes, remove_zero_area_bboxes
+from utils.box_utils import pairwise_iou, cat_boxes, remove_zero_area_bboxes_i
 
 
 class RetinaLoss(nn.Module):
@@ -21,7 +21,7 @@ class RetinaLoss(nn.Module):
         test_topk_candidates=1000,
         test_nms_thresh=0.5,
         max_detection_per_image=100,
-        allow_low_quality_matches=False,
+        allow_low_quality_matches=True,
     ):
         super().__init__()
         self.anchor_matcher = Matcher(
@@ -56,8 +56,6 @@ class RetinaLoss(nn.Module):
         pred_logits = outputs["pred_logits"]
         pred_anchor_deltas = outputs["pred_bboxes"]
         anchors = outputs["anchors"]
-        bs = len(boxes)
-        boxes, labels = remove_zero_area_bboxes(bs, boxes, labels)
 
         ## pdb.set_trace(
         ##     header="loss.py -> RetinaLoss -> forward method -> after unwrapping outputs."
@@ -87,16 +85,18 @@ class RetinaLoss(nn.Module):
 
         # TODO: How can I avoid this bs loop?
         for i in range(bs):
-            matched_quality_matrix = pairwise_iou(boxes[i], anchors)
+            boxes_i, lbls_i = remove_zero_area_bboxes_i(boxes[i], labels[i])
+            matched_quality_matrix = pairwise_iou(boxes_i, anchors)
             matched_idxs, anchor_labels = self.anchor_matcher(matched_quality_matrix)
             del matched_quality_matrix
+
             ## pdb.set_trace(
             ##     header=f"loss.py -> RetinaLoss -> label_anchors meth: {i}th batch after applying matcher."
             ## )
 
-            if len(boxes[i]) > 0:
-                matched_gt_boxes_i = boxes[i][matched_idxs]
-                gt_labels_i = labels[i][matched_idxs]
+            if len(boxes_i) > 0:
+                matched_gt_boxes_i = boxes_i[matched_idxs]
+                gt_labels_i = lbls_i[matched_idxs]
                 # Label 0 means background.
                 gt_labels_i[anchor_labels == 0] = self.num_classes
                 # Label -1 means ignore.

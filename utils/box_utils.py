@@ -1,7 +1,6 @@
 """Utility functions for bounding box gymnastics."""
 
-## import pdb
-from typing import List, Union
+from typing import List
 import torch
 from torch import Tensor
 
@@ -17,7 +16,7 @@ def cat_boxes(boxes_list: List[Tensor]):
     return cat_boxes
 
 
-def pairwise_iou(set_1, set_2):
+def pairwise_iou(set_1: Tensor, set_2: Tensor):
     """
     Find the IOU (intersection over union) of every combination between two
     sets of boxes that are in boundary containers.
@@ -39,7 +38,7 @@ def pairwise_iou(set_1, set_2):
     return intersection / union  # (n1, n2)
 
 
-def pairwise_intersection(set_1, set_2):
+def pairwise_intersection(set_1: Tensor, set_2: Tensor):
     """
     Find the intersection of every box combination between two sets of
     boxes that are in boundary coordinates.
@@ -61,7 +60,7 @@ def pairwise_intersection(set_1, set_2):
     return intersection_dims[:, :, 0] * intersection_dims[:, :, 1]  # (n1, n2)
 
 
-def find_area(sset):
+def find_area(sset: Tensor):
     """
     Find area of boxes that are in boundary container.
     Args:
@@ -73,9 +72,7 @@ def find_area(sset):
     return (sset[:, 2] - sset[:, 0]) * (sset[:, 3] - sset[:, 1])
 
 
-def remove_zero_area_bboxes(
-    bs, bboxes: Union[List[Tensor], Tensor], lbls: Union[List[Tensor], Tensor]
-):
+def remove_zero_area_bboxes_i(bboxes_i: Tensor, lbls_i: Tensor):
     """
     Remove any bboxes in a given batch if the area is zero.
 
@@ -85,11 +82,6 @@ def remove_zero_area_bboxes(
     See https://github.com/jwyang/faster-rcnn.pytorch/issues/136#issuecomment-390544655
     for more details.
     """
-    t_bboxes, t_lbls = [], []
-    # TODO: Can I avoid this bs loop?
-    for i in range(bs):
-        areas = find_area(bboxes[i])
-        area_mask = areas > 0
-        t_bboxes.append(bboxes[i][area_mask])
-        t_lbls.append(lbls[i][area_mask])
-    return t_bboxes, t_lbls
+    areas = find_area(bboxes_i)
+    area_mask = areas > 0
+    return bboxes_i[area_mask], lbls_i[area_mask]

@@ -5,7 +5,6 @@ import torch
 from model.model import retina_resnet50
 from model.loss import RetinaLoss
 from data_loader.data_loaders import load_sample_coco_dls
-from utils.box_utils import remove_zero_area_bboxes
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 2
