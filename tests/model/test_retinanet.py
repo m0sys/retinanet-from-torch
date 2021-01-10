@@ -1,9 +1,10 @@
+import time
 import pytest
 import torch
 
 from model.model import retina_resnet50, retina_resnet101, retina_resnet152
 
-BATCH_SIZE = 1
+BATCH_SIZE = 16
 
 
 @pytest.fixture(scope="module")
@@ -11,6 +12,7 @@ def init_512x512_dummy_data():
     return torch.randn((BATCH_SIZE, 3, 512, 512))
 
 
+@pytest.mark.skip("Need to focus on speed tests.")
 def test_retina_resnet50_out_shapes(init_512x512_dummy_data):
     num_anchors = 9
     num_classes = 20
@@ -41,6 +43,7 @@ def test_retina_resnet50_out_shapes(init_512x512_dummy_data):
     assert anchors[4].shape == (4 * 4 * num_anchors, 4)
 
 
+@pytest.mark.skip("Need to focus on speed tests.")
 def test_retina_resnet101_out_shapes(init_512x512_dummy_data):
     num_anchors = 9
     num_classes = 20
@@ -71,6 +74,7 @@ def test_retina_resnet101_out_shapes(init_512x512_dummy_data):
     assert anchors[4].shape == (4 * 4 * num_anchors, 4)
 
 
+@pytest.mark.skip("Need to focus on speed tests.")
 def test_retina_resnet152_out_shapes(init_512x512_dummy_data):
     num_anchors = 9
     num_classes = 20
@@ -99,3 +103,45 @@ def test_retina_resnet152_out_shapes(init_512x512_dummy_data):
     assert anchors[2].shape == (16 * 16 * num_anchors, 4)
     assert anchors[3].shape == (8 * 8 * num_anchors, 4)
     assert anchors[4].shape == (4 * 4 * num_anchors, 4)
+
+
+def test_retina_resnet50_speed(init_512x512_dummy_data):
+    model_type = 50
+    num_classes = 20
+    data = init_512x512_dummy_data
+    model = retina_resnet50(num_classes)
+
+    print(
+        f"\n--- Testing Executation time for RetinaNet{model_type} for BS = {BATCH_SIZE} ---\n"
+    )
+    start_time = time.time()
+    model(data)
+    print(f"\n--- {time.time() - start_time} seconds ---")
+
+
+def test_retina_resnet101_speed(init_512x512_dummy_data):
+    model_type = 101
+    num_classes = 20
+    data = init_512x512_dummy_data
+    model = retina_resnet101(num_classes)
+
+    print(
+        f"\n--- Testing Executation time for RetinaNet{model_type} for BS = {BATCH_SIZE} ---\n"
+    )
+    start_time = time.time()
+    model(data)
+    print(f"\n--- {time.time() - start_time} seconds ---")
+
+
+def test_retina_resnet152_speed(init_512x512_dummy_data):
+    model_type = 152
+    num_classes = 20
+    data = init_512x512_dummy_data
+    model = retina_resnet152(num_classes)
+
+    print(
+        f"\n--- Testing Executation time for RetinaNet{model_type} for BS = {BATCH_SIZE} ---\n"
+    )
+    start_time = time.time()
+    model(data)
+    print(f"\n--- {time.time() - start_time} seconds ---")
