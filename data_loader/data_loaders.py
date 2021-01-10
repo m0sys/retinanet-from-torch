@@ -136,3 +136,21 @@ def load_sample_coco_dls(img_size=512, bs=32, seed=None):
         n_inp=1,
     )
     return sample_coco.dataloaders(path / "train_sample", bs=bs)
+
+def load_pascal_dls(img_size=224, bs=32):
+    path = untar_data(URLs.PASCAL_2007)
+    imgs, lbl_bbox = get_annotations(path/"train.json")
+    img2bbox = dict(zip(imgs, lbl_bbox))
+    getters = [lambda o: path/"train"/o, lambda o: img2bbox[o][0], lambda o: img2bbox[o][1]]
+    item_tfms = [Resize(img_size, method="pad"),]
+    batch_tfms = [Flip(), Normalize.from_stats(*imagenet_stats)]
+    pascal = DataBlock(
+        blocks=(ImageBlock, BBoxBlock, BBoxLblBlock),
+        splitter=RandomSplitter(),
+        get_items=lambda noop: imgs,
+        getters=getters,
+        item_tfms=item_tfms,
+        batch_tfms=batch_tfms,
+        n_inp=1,
+    )
+    return pascal.dataloaders(path/"train")
